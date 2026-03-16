@@ -68,6 +68,12 @@ const Elements = {
         defaults.height = 48;
         defaults.icon = extra.icon || '●';
         break;
+      case 'todo':
+        defaults.width = 260;
+        defaults.height = 200;
+        defaults.title = extra.title || 'Tasks';
+        defaults.items = extra.items || [];
+        break;
     }
 
     return defaults;
@@ -163,6 +169,17 @@ const Elements = {
         el.appendChild(inner);
         el.style.width = 'auto';
         el.style.height = 'auto';
+        break;
+
+      case 'todo':
+        inner = document.createElement('div');
+        inner.className = 'el-todo';
+        inner.style.width = '100%';
+        inner.style.height = '100%';
+        inner.innerHTML = Todos.renderInner(data);
+        el.appendChild(inner);
+        // Bind todo-specific events after appending to DOM
+        setTimeout(() => Todos.bindEvents(el, data), 0);
         break;
     }
 
@@ -353,6 +370,11 @@ const Elements = {
     if (data.type === 'icon' && props.icon !== undefined) {
       dom.querySelector('.el-icon').textContent = props.icon;
     }
+    if (data.type === 'todo') {
+      if (props.title !== undefined) {
+        Todos.refresh(dom, data);
+      }
+    }
   },
 
   bindCanvasEvents() {
@@ -392,6 +414,12 @@ const Elements = {
             origH: data.height,
           };
         }
+        return;
+      }
+
+      // Don't start dragging if interacting with todo elements
+      if (target.closest('.todo-check') || target.closest('.todo-add-btn') ||
+          target.closest('.todo-add-row') || target.closest('.todo-edit-input')) {
         return;
       }
 
@@ -438,7 +466,7 @@ const Elements = {
       }
 
       if (tool === 'icon') {
-        App.showIconPicker(canvasPos.x, canvasPos.y);
+        IconPicker.show(canvasPos.x, canvasPos.y);
         return;
       }
 
@@ -453,6 +481,17 @@ const Elements = {
         fi.accept = '*';
         fi.click();
         App._pendingImagePos = canvasPos;
+        return;
+      }
+
+      if (tool === 'todo') {
+        const data = this.create('todo', canvasPos.x, canvasPos.y);
+        App.elements.push(data);
+        this.renderElement(data);
+        this.select(data.id);
+        App.setTool('select');
+        App.saveState();
+        Canvas.updateMinimap();
         return;
       }
 
@@ -587,12 +626,15 @@ const Elements = {
       if (data.type === 'file' && data.url) {
         window.open(data.url, '_blank');
       }
+      // todo double-click is handled by Todos.bindEvents
     });
 
     container.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       const elementDom = e.target.closest('.canvas-element');
       if (elementDom) {
+        // Don't show main context menu if right-clicking a todo item
+        if (e.target.closest('.todo-item')) return;
         const id = elementDom.dataset.id;
         if (!this.selected.includes(id)) this.select(id);
       }
@@ -631,239 +673,6 @@ const Elements = {
     editable.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') editable.blur();
       e.stopPropagation();
-    });
-  },
-};
-
-/* === FLOATING PROPERTIES POPUP — Swiss Industrial Style === */
-const Properties = {
-  currentId: null,
-
-  show(data) {
-    if (!data) return;
-    this.currentId = data.id;
-    const panel = document.getElementById('properties-panel');
-    const content = document.getElementById('props-content');
-    panel.classList.remove('hidden');
-
-    // Position popup next to the element
-    this.positionPopup(data);
-
-    let html = `
-      <div class="prop-group">
-        <div class="prop-label">01 — ${data.type.toUpperCase()}</div>
-        <div class="prop-slider-row">
-          <span class="prop-slider-label">W</span>
-          <input class="prop-slider" type="range" data-prop="width" value="${Math.round(data.width)}" min="40" max="800" />
-          <span class="prop-slider-value" data-display="width">${Math.round(data.width)}</span>
-        </div>
-        <div class="prop-slider-row">
-          <span class="prop-slider-label">H</span>
-          <input class="prop-slider" type="range" data-prop="height" value="${Math.round(data.height)}" min="20" max="800" />
-          <span class="prop-slider-value" data-display="height">${Math.round(data.height)}</span>
-        </div>
-      </div>
-    `;
-
-    if (data.type === 'text') {
-      html += `
-        <div class="prop-group">
-          <div class="prop-label">02 — SIZE</div>
-          <div class="prop-slider-row">
-            <span class="prop-slider-label">Aa</span>
-            <input class="prop-slider" type="range" data-prop="fontSize" value="${data.fontSize || 14}" min="8" max="120" />
-            <span class="prop-slider-value" data-display="fontSize">${data.fontSize || 14}</span>
-          </div>
-        </div>
-        <div class="prop-group">
-          <div class="prop-label">03 — COLOR</div>
-          <div class="color-row">
-            ${Utils.ELEMENT_COLORS.map(c => `<div class="color-option ${data.color === c ? 'active' : ''}" style="background:${c}" data-color="${c}" data-prop="color"></div>`).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    if (data.type === 'note') {
-      html += `
-        <div class="prop-group">
-          <div class="prop-label">02 — ACCENT</div>
-          <div class="color-row">
-            ${Utils.NOTE_COLORS.map(c => {
-              const bg = c.name === 'default' ? '#FFFFFF' : c.name === 'blue' ? '#0066FF' : c.name === 'green' ? '#00AA44' : c.name === 'pink' ? '#FF0066' : c.name === 'purple' ? '#7700FF' : '#FF4500';
-              return `<div class="color-option ${data.noteColor === c.name ? 'active' : ''}" style="background:${bg};border:1px solid #CCC" data-notecolor="${c.name}" data-prop="noteColor" title="${c.label}"></div>`;
-            }).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    if (data.type === 'rect' || data.type === 'circle') {
-      html += `
-        <div class="prop-group">
-          <div class="prop-label">02 — BORDER</div>
-          <div class="color-row">
-            ${Utils.BORDER_COLORS.map(c => `<div class="color-option ${data.borderColor === c ? 'active' : ''}" style="background:${c}" data-bordercolor="${c}" data-prop="borderColor"></div>`).join('')}
-          </div>
-        </div>
-        <div class="prop-group">
-          <div class="prop-label">03 — FILL</div>
-          <div class="color-row">
-            <div class="color-option ${data.fillColor === 'transparent' ? 'active' : ''}" style="background:transparent;border:1px dashed #999" data-fillcolor="transparent" data-prop="fillColor"></div>
-            ${Utils.ELEMENT_COLORS.map(c => `<div class="color-option ${data.fillColor === c + '22' ? 'active' : ''}" style="background:${c}22" data-fillcolor="${c}22" data-prop="fillColor"></div>`).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    if (data.type === 'image') {
-      html += `
-        <div class="prop-group">
-          <div class="prop-label">02 — SCALE</div>
-          <div class="prop-slider-row">
-            <span class="prop-slider-label">%</span>
-            <input class="prop-slider" type="range" data-prop="scale" value="100" min="10" max="300" />
-            <span class="prop-slider-value" data-display="scale">100</span>
-          </div>
-        </div>
-      `;
-    }
-
-    content.innerHTML = html;
-
-    // Bind sliders
-    content.querySelectorAll('.prop-slider').forEach(slider => {
-      const prop = slider.dataset.prop;
-      const valueDisplay = content.querySelector(`[data-display="${prop}"]`);
-
-      slider.addEventListener('input', () => {
-        const val = parseFloat(slider.value);
-        if (valueDisplay) valueDisplay.textContent = Math.round(val);
-
-        if (prop === 'scale') {
-          // Scale calculates relative W/H from original
-          const origData = Elements.getData(data.id);
-          if (origData && origData._origW) {
-            Elements.updateElement(data.id, {
-              width: origData._origW * val / 100,
-              height: origData._origH * val / 100,
-            });
-          }
-        } else {
-          Elements.updateElement(data.id, { [prop]: val });
-        }
-        Connections.render();
-      });
-
-      slider.addEventListener('change', () => {
-        App.saveState();
-      });
-
-      // Store original dimensions for scale
-      if (prop === 'scale' && data.type === 'image') {
-        if (!data._origW) {
-          data._origW = data.width;
-          data._origH = data.height;
-        }
-      }
-    });
-
-    // Bind number inputs
-    content.querySelectorAll('.prop-input').forEach(input => {
-      input.addEventListener('change', () => {
-        const prop = input.dataset.prop;
-        let val = input.type === 'number' ? parseFloat(input.value) : input.value;
-        Elements.updateElement(data.id, { [prop]: val });
-        Connections.render();
-        App.saveState();
-      });
-    });
-
-    // Bind color options
-    content.querySelectorAll('.color-option').forEach(opt => {
-      opt.addEventListener('click', () => {
-        const prop = opt.dataset.prop;
-        const val = opt.dataset.color || opt.dataset.notecolor || opt.dataset.bordercolor || opt.dataset.fillcolor;
-        Elements.updateElement(data.id, { [prop]: val });
-        this.show(Elements.getData(data.id));
-        App.saveState();
-      });
-    });
-  },
-
-  positionPopup(data) {
-    const panel = document.getElementById('properties-panel');
-    const screenPos = Canvas.canvasToScreen(data.x + data.width, data.y);
-    const panelW = 220;
-    const gap = 12;
-
-    let left = screenPos.x + gap;
-    let top = screenPos.y;
-
-    // Keep within viewport
-    if (left + panelW > window.innerWidth - 16) {
-      // Position to the left of element
-      const leftPos = Canvas.canvasToScreen(data.x, data.y);
-      left = leftPos.x - panelW - gap;
-    }
-    if (left < 70) left = 70;
-    if (top < 50) top = 50;
-    if (top + 300 > window.innerHeight) top = window.innerHeight - 320;
-
-    panel.style.left = left + 'px';
-    panel.style.top = top + 'px';
-  },
-
-  hide() {
-    this.currentId = null;
-    document.getElementById('properties-panel').classList.add('hidden');
-  },
-
-  // Update popup position when element moves
-  updatePosition() {
-    if (!this.currentId) return;
-    const data = Elements.getData(this.currentId);
-    if (data) this.positionPopup(data);
-  },
-};
-
-document.getElementById('close-properties')?.addEventListener('click', () => Properties.hide());
-
-/* === CONTEXT MENU === */
-const ContextMenu = {
-  show(x, y) {
-    const menu = document.getElementById('context-menu');
-    menu.classList.remove('hidden');
-    menu.style.left = x + 'px';
-    menu.style.top = y + 'px';
-
-    const rect = menu.getBoundingClientRect();
-    if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + 'px';
-    if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
-  },
-
-  hide() {
-    document.getElementById('context-menu').classList.add('hidden');
-  },
-
-  init() {
-    document.addEventListener('click', () => this.hide());
-
-    document.querySelectorAll('.ctx-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const action = item.dataset.action;
-        switch (action) {
-          case 'duplicate': Elements.duplicateSelected(); break;
-          case 'copy': Elements.copy(); break;
-          case 'paste': Elements.paste(); break;
-          case 'bring-front': Elements.bringToFront(); break;
-          case 'send-back': Elements.sendToBack(); break;
-          case 'lock': Elements.toggleLock(); break;
-          case 'delete': Elements.deleteSelected(); break;
-        }
-        this.hide();
-      });
     });
   },
 };

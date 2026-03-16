@@ -333,11 +333,16 @@ const Admin = {
           <td>${this.timeAgo(board.created)}</td>
           <td>
             <div class="action-btns">
+              <button class="action-btn" data-action="share-board" data-owner="${this.esc(board.owner)}" data-name="${this.esc(board.name)}">SHARE</button>
               <button class="action-btn danger" data-action="delete-board" data-owner="${this.esc(board.owner)}" data-name="${this.esc(board.name)}">DELETE</button>
             </div>
           </td>
         `;
         tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll('[data-action="share-board"]').forEach(btn => {
+        btn.addEventListener('click', () => this.showShareModal(btn.dataset.owner, btn.dataset.name));
       });
 
       tbody.querySelectorAll('[data-action="delete-board"]').forEach(btn => {
@@ -380,16 +385,28 @@ const Admin = {
 
       suggestions.forEach((s, idx) => {
         const row = document.createElement('div');
-        row.className = 'suggestion-row';
+        row.className = 'suggestion-row' + (s.done ? ' done' : '');
+        const bullet = s.done ? '✓' : '→';
+        const bulletClass = s.done ? 'suggestion-bullet done' : 'suggestion-bullet';
+        const doneInfo = s.done && s.doneBy ? ` · done by ${this.esc(s.doneBy)}` : '';
+        const toggleLabel = s.done ? 'OPEN' : 'DONE';
+        const toggleClass = s.done ? 'suggestion-toggle reopen' : 'suggestion-toggle';
         row.innerHTML = `
-          <span class="suggestion-bullet">→</span>
+          <span class="${bulletClass}">${bullet}</span>
           <div class="suggestion-content">
             <div class="suggestion-text">${this.esc(s.text)}</div>
-            <div class="suggestion-meta">${s.user ? s.user + ' · ' : ''}${this.timeAgo(s.time)}</div>
+            <div class="suggestion-meta">${s.user ? s.user + ' · ' : ''}${this.timeAgo(s.time)}${doneInfo}</div>
           </div>
-          <button class="suggestion-delete" data-idx="${idx}" title="Delete">✕</button>
+          <div class="suggestion-actions-admin">
+            <button class="${toggleClass}" data-idx="${idx}" title="${toggleLabel}">${toggleLabel}</button>
+            <button class="suggestion-delete" data-idx="${idx}" title="Delete">✕</button>
+          </div>
         `;
         list.appendChild(row);
+      });
+
+      list.querySelectorAll('.suggestion-toggle').forEach(btn => {
+        btn.addEventListener('click', () => this.toggleSuggestionDone(parseInt(btn.dataset.idx)));
       });
 
       list.querySelectorAll('.suggestion-delete').forEach(btn => {
@@ -398,6 +415,18 @@ const Admin = {
 
     } catch (err) {
       console.error('Failed to load suggestions:', err);
+    }
+  },
+
+  async toggleSuggestionDone(idx) {
+    try {
+      const res = await fetch(`/api/admin/suggestions/${idx}/toggle-done`, { method: 'PATCH' });
+      const data = await res.json();
+      if (data.success) {
+        this.loadSuggestions();
+      }
+    } catch {
+      alert('Connection error');
     }
   },
 
@@ -412,6 +441,106 @@ const Admin = {
     } catch {
       alert('Connection error');
     }
+  },
+
+  // ═══ SHARE BOARD ═══
+  async showShareModal(owner, boardName) {
+    // Load users and current collaborators
+    let users = [];
+    let collaborators = [];
+    try {
+      const [usersRes, collabRes] = await Promise.all([
+        fetch('/api/admin/users'),
+        fetch(`/api/admin/boards/${encodeURIComponent(owner)}/${encodeURIComponent(boardName)}/collaborators`),
+      ]);
+      users = await usersRes.json();
+      collaborators = await collabRes.json();
+    } catch {
+      alert('Failed to load data');
+      return;
+    }
+
+    // Filter out the owner from user options
+    const availableUsers = users.filter(u => u.username !== owner && !collaborators.includes(u.username));
+
+    const body = `
+      <div class="modal-group">
+        <label class="modal-label">BOARD</label>
+        <input class="modal-input" value="${this.esc(boardName)} (by ${this.esc(owner)})" disabled style="opacity:0.5" />
+      </div>
+      <div class="modal-group">
+        <label class="modal-label">ADD USER</label>
+        <div style="display:flex;gap:6px">
+          <select class="modal-select" id="m-share-user" style="flex:1">
+            <option value="">— Select user —</option>
+            ${availableUsers.map(u => `<option value="${this.esc(u.username)}">${this.esc(u.username)} (${this.esc(u.displayName)})</option>`).join('')}
+          </select>
+          <button class="modal-btn" id="m-add-collab" style="width:auto;padding:6px 14px">ADD</button>
+        </div>
+      </div>
+      <div class="modal-group">
+        <label class="modal-label">COLLABORATORS</label>
+        <div id="m-collab-list">
+          ${collaborators.length === 0
+            ? '<div class="empty-state" style="padding:10px 0">No collaborators yet</div>'
+            : collaborators.map(c => `
+              <div class="collab-row" data-user="${this.esc(c)}">
+                <span class="collab-name">${this.esc(c)}</span>
+                <button class="action-btn danger collab-remove" data-user="${this.esc(c)}">REMOVE</button>
+              </div>
+            `).join('')}
+        </div>
+      </div>
+      <div id="m-error" class="modal-error"></div>
+    `;
+    const footer = `
+      <button class="modal-btn secondary" onclick="Admin.closeModal()">CLOSE</button>
+    `;
+    this.showModal('SHARE BOARD', body, footer);
+
+    // Add collaborator
+    document.getElementById('m-add-collab').addEventListener('click', async () => {
+      const select = document.getElementById('m-share-user');
+      const username = select.value;
+      if (!username) return;
+      const errorEl = document.getElementById('m-error');
+      try {
+        const res = await fetch(`/api/admin/boards/${encodeURIComponent(owner)}/${encodeURIComponent(boardName)}/collaborators`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user: username }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showShareModal(owner, boardName); // Re-render
+        } else {
+          errorEl.textContent = data.error || 'Failed';
+        }
+      } catch {
+        errorEl.textContent = 'Connection error';
+      }
+    });
+
+    // Remove collaborator
+    document.querySelectorAll('.collab-remove').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const user = btn.dataset.user;
+        const errorEl = document.getElementById('m-error');
+        try {
+          const res = await fetch(`/api/admin/boards/${encodeURIComponent(owner)}/${encodeURIComponent(boardName)}/collaborators/${encodeURIComponent(user)}`, {
+            method: 'DELETE',
+          });
+          const data = await res.json();
+          if (data.success) {
+            this.showShareModal(owner, boardName); // Re-render
+          } else {
+            errorEl.textContent = data.error || 'Failed';
+          }
+        } catch {
+          errorEl.textContent = 'Connection error';
+        }
+      });
+    });
   },
 
   // ═══ UTILS ═══

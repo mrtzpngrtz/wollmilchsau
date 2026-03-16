@@ -236,6 +236,17 @@ app.get('/api/auth/me', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════
+//  USERS LIST (authenticated — for todo assignment)
+// ═══════════════════════════════════════════════════════
+app.get('/api/users', requireAuth, (req, res) => {
+  const users = loadUsers().map(u => ({
+    username: u.username,
+    displayName: u.displayName,
+  }));
+  res.json(users);
+});
+
+// ═══════════════════════════════════════════════════════
 //  FILE UPLOAD (authenticated)
 // ═══════════════════════════════════════════════════════
 const storage = multer.diskStorage({
@@ -274,10 +285,12 @@ app.post('/api/boards/:name', requireAuth, (req, res) => {
   const filePath = path.join(boardDir, name + '.json');
 
   let created = new Date().toISOString();
+  let collaborators = [];
   if (fs.existsSync(filePath)) {
     try {
       const prev = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       if (prev.meta && prev.meta.created) created = prev.meta.created;
+      if (prev.meta && prev.meta.collaborators) collaborators = prev.meta.collaborators;
     } catch (e) {}
   }
 
@@ -288,6 +301,7 @@ app.post('/api/boards/:name', requireAuth, (req, res) => {
       lastEdit: new Date().toISOString(),
       elementCount: (req.body.elements || []).length,
       owner: req.session.user.username,
+      collaborators,
     },
   };
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
@@ -336,9 +350,10 @@ app.delete('/api/boards/:name', requireAuth, (req, res) => {
   }
 });
 
-// List boards
+// List boards (own + shared)
 app.get('/api/boards', requireAuth, (req, res) => {
-  const boardDir = getUserBoardDir(req.session.user.username);
+  const username = req.session.user.username;
+  const boardDir = getUserBoardDir(username);
   const files = fs.readdirSync(boardDir).filter(f => f.endsWith('.json'));
   const boards = files.map(f => {
     const name = f.replace('.json', '');
@@ -346,16 +361,105 @@ app.get('/api/boards', requireAuth, (req, res) => {
       const data = JSON.parse(fs.readFileSync(path.join(boardDir, f), 'utf8'));
       return {
         name,
+        owner: username,
+        shared: false,
         created: data.meta?.created || null,
         lastEdit: data.meta?.lastEdit || null,
         elementCount: data.meta?.elementCount || (data.elements || []).length,
       };
     } catch (e) {
-      return { name, created: null, lastEdit: null, elementCount: 0 };
+      return { name, owner: username, shared: false, created: null, lastEdit: null, elementCount: 0 };
     }
   });
+
+  // Find shared boards from other users
+  const boardsBase = path.join(__dirname, 'data', 'boards');
+  if (fs.existsSync(boardsBase)) {
+    fs.readdirSync(boardsBase).filter(d => d !== username && fs.statSync(path.join(boardsBase, d)).isDirectory()).forEach(owner => {
+      const ownerDir = path.join(boardsBase, owner);
+      fs.readdirSync(ownerDir).filter(f => f.endsWith('.json')).forEach(f => {
+        try {
+          const data = JSON.parse(fs.readFileSync(path.join(ownerDir, f), 'utf8'));
+          const collabs = data.meta?.collaborators || [];
+          if (collabs.includes(username)) {
+            boards.push({
+              name: f.replace('.json', ''),
+              owner,
+              shared: true,
+              created: data.meta?.created || null,
+              lastEdit: data.meta?.lastEdit || null,
+              elementCount: data.meta?.elementCount || (data.elements || []).length,
+            });
+          }
+        } catch (e) {}
+      });
+    });
+  }
+
   boards.sort((a, b) => (b.lastEdit || '').localeCompare(a.lastEdit || ''));
   res.json(boards);
+});
+
+// Load shared board
+app.get('/api/boards/:owner/:name', requireAuth, (req, res) => {
+  const owner = req.params.owner.replace(/[^a-zA-Z0-9_-]/g, '');
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  const username = req.session.user.username;
+
+  // If loading own board, redirect to standard route logic
+  if (owner === username) {
+    const boardDir = getUserBoardDir(username);
+    const filePath = path.join(boardDir, name + '.json');
+    if (!fs.existsSync(filePath)) return res.json({ elements: [], connections: [] });
+    return res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')));
+  }
+
+  const filePath = path.join(__dirname, 'data', 'boards', owner, name + '.json');
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Board not found' });
+
+  const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const collabs = data.meta?.collaborators || [];
+  const isAdmin = req.session.user.role === 'admin';
+  if (!collabs.includes(username) && !isAdmin) return res.status(403).json({ error: 'Access denied' });
+
+  res.json(data);
+});
+
+// Save shared board
+app.post('/api/boards/:owner/:name', requireAuth, (req, res) => {
+  const owner = req.params.owner.replace(/[^a-zA-Z0-9_-]/g, '');
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  const username = req.session.user.username;
+
+  // If saving own board, use standard logic
+  if (owner === username) {
+    const boardDir = getUserBoardDir(username);
+    const filePath = path.join(boardDir, name + '.json');
+    let created = new Date().toISOString();
+    let collaborators = [];
+    if (fs.existsSync(filePath)) {
+      try {
+        const prev = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        if (prev.meta?.created) created = prev.meta.created;
+        if (prev.meta?.collaborators) collaborators = prev.meta.collaborators;
+      } catch (e) {}
+    }
+    const data = { ...req.body, meta: { created, lastEdit: new Date().toISOString(), elementCount: (req.body.elements || []).length, owner: username, collaborators } };
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    return res.json({ success: true });
+  }
+
+  const filePath = path.join(__dirname, 'data', 'boards', owner, name + '.json');
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Board not found' });
+
+  const existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const collabs = existing.meta?.collaborators || [];
+  const isAdmin = req.session.user.role === 'admin';
+  if (!collabs.includes(username) && !isAdmin) return res.status(403).json({ error: 'Access denied' });
+
+  const data = { ...req.body, meta: { created: existing.meta?.created || new Date().toISOString(), lastEdit: new Date().toISOString(), elementCount: (req.body.elements || []).length, owner, collaborators: collabs } };
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  res.json({ success: true });
 });
 
 // ═══════════════════════════════════════════════════════
@@ -380,6 +484,50 @@ app.post('/api/suggestions', requireAuth, (req, res) => {
     time: new Date().toISOString(),
     user: req.session.user.username,
   });
+  fs.writeFileSync(suggestionsFile, JSON.stringify(suggestions, null, 2));
+  res.json({ success: true });
+});
+
+// Edit suggestion (owner or admin)
+app.put('/api/suggestions/:index', requireAuth, (req, res) => {
+  const idx = parseInt(req.params.index);
+  const { text } = req.body;
+  if (isNaN(idx)) return res.status(400).json({ error: 'Invalid index' });
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Empty' });
+
+  let suggestions = [];
+  if (fs.existsSync(suggestionsFile)) {
+    suggestions = JSON.parse(fs.readFileSync(suggestionsFile, 'utf8'));
+  }
+  if (idx < 0 || idx >= suggestions.length) return res.status(404).json({ error: 'Not found' });
+
+  // Only the owner or an admin can edit
+  const isOwner = suggestions[idx].user === req.session.user.username;
+  const isAdmin = req.session.user.role === 'admin';
+  if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Not allowed' });
+
+  suggestions[idx].text = text.trim();
+  suggestions[idx].edited = new Date().toISOString();
+  fs.writeFileSync(suggestionsFile, JSON.stringify(suggestions, null, 2));
+  res.json({ success: true });
+});
+
+// Delete suggestion (owner or admin)
+app.delete('/api/suggestions/:index', requireAuth, (req, res) => {
+  const idx = parseInt(req.params.index);
+  if (isNaN(idx)) return res.status(400).json({ error: 'Invalid index' });
+
+  let suggestions = [];
+  if (fs.existsSync(suggestionsFile)) {
+    suggestions = JSON.parse(fs.readFileSync(suggestionsFile, 'utf8'));
+  }
+  if (idx < 0 || idx >= suggestions.length) return res.status(404).json({ error: 'Not found' });
+
+  const isOwner = suggestions[idx].user === req.session.user.username;
+  const isAdmin = req.session.user.role === 'admin';
+  if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Not allowed' });
+
+  suggestions.splice(idx, 1);
   fs.writeFileSync(suggestionsFile, JSON.stringify(suggestions, null, 2));
   res.json({ success: true });
 });
@@ -599,10 +747,86 @@ app.delete('/api/admin/boards/:username/:name', requireAdmin, (req, res) => {
   }
 });
 
+// Board collaborators (admin)
+app.get('/api/admin/boards/:username/:name/collaborators', requireAdmin, (req, res) => {
+  const username = req.params.username.replace(/[^a-zA-Z0-9_-]/g, '');
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  const filePath = path.join(__dirname, 'data', 'boards', username, name + '.json');
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Board not found' });
+  const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  res.json(data.meta?.collaborators || []);
+});
+
+app.post('/api/admin/boards/:username/:name/collaborators', requireAdmin, (req, res) => {
+  const username = req.params.username.replace(/[^a-zA-Z0-9_-]/g, '');
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  const { user: collab } = req.body;
+  if (!collab) return res.status(400).json({ error: 'User required' });
+
+  const filePath = path.join(__dirname, 'data', 'boards', username, name + '.json');
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Board not found' });
+
+  // Verify the user exists
+  if (!findUser(collab)) return res.status(404).json({ error: 'User not found' });
+  if (collab === username) return res.status(400).json({ error: 'Cannot add owner as collaborator' });
+
+  const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  if (!data.meta) data.meta = {};
+  if (!data.meta.collaborators) data.meta.collaborators = [];
+  if (data.meta.collaborators.includes(collab)) return res.status(409).json({ error: 'Already a collaborator' });
+
+  data.meta.collaborators.push(collab);
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  res.json({ success: true, collaborators: data.meta.collaborators });
+});
+
+app.delete('/api/admin/boards/:username/:name/collaborators/:user', requireAdmin, (req, res) => {
+  const username = req.params.username.replace(/[^a-zA-Z0-9_-]/g, '');
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  const collab = req.params.user;
+
+  const filePath = path.join(__dirname, 'data', 'boards', username, name + '.json');
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Board not found' });
+
+  const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  if (!data.meta?.collaborators) return res.status(404).json({ error: 'Not a collaborator' });
+
+  const idx = data.meta.collaborators.indexOf(collab);
+  if (idx < 0) return res.status(404).json({ error: 'Not a collaborator' });
+
+  data.meta.collaborators.splice(idx, 1);
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  res.json({ success: true, collaborators: data.meta.collaborators });
+});
+
 // Admin suggestions
 app.get('/api/admin/suggestions', requireAdmin, (req, res) => {
   if (!fs.existsSync(suggestionsFile)) return res.json([]);
   res.json(JSON.parse(fs.readFileSync(suggestionsFile, 'utf8')));
+});
+
+// Toggle suggestion done status (admin)
+app.patch('/api/admin/suggestions/:index/toggle-done', requireAdmin, (req, res) => {
+  const idx = parseInt(req.params.index);
+  if (isNaN(idx)) return res.status(400).json({ error: 'Invalid index' });
+
+  let suggestions = [];
+  if (fs.existsSync(suggestionsFile)) {
+    suggestions = JSON.parse(fs.readFileSync(suggestionsFile, 'utf8'));
+  }
+  if (idx < 0 || idx >= suggestions.length) return res.status(404).json({ error: 'Not found' });
+
+  suggestions[idx].done = !suggestions[idx].done;
+  if (suggestions[idx].done) {
+    suggestions[idx].doneBy = req.session.user.username;
+    suggestions[idx].doneAt = new Date().toISOString();
+  } else {
+    delete suggestions[idx].doneBy;
+    delete suggestions[idx].doneAt;
+  }
+
+  fs.writeFileSync(suggestionsFile, JSON.stringify(suggestions, null, 2));
+  res.json({ success: true, done: suggestions[idx].done });
 });
 
 app.delete('/api/admin/suggestions/:index', requireAdmin, (req, res) => {

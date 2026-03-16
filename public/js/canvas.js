@@ -196,23 +196,6 @@ const Canvas = {
     });
     svg.appendChild(rect);
 
-    // Origin crosshair (subtle hairlines)
-    const originX = this.panX;
-    const originY = this.panY;
-    if (originX > -1 && originX < w + 1) {
-      const line = Utils.createSVGElement('line', {
-        x1: originX, y1: 0, x2: originX, y2: h,
-        stroke: isDark ? '#252525' : '#E0E0E0', 'stroke-width': 1,
-      });
-      svg.appendChild(line);
-    }
-    if (originY > -1 && originY < h + 1) {
-      const line = Utils.createSVGElement('line', {
-        x1: 0, y1: originY, x2: w, y2: originY,
-        stroke: isDark ? '#252525' : '#E0E0E0', 'stroke-width': 1,
-      });
-      svg.appendChild(line);
-    }
   },
 
   fitAll() {

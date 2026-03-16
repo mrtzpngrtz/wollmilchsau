@@ -91,4 +91,14 @@ const Utils = {
     '#111111', '#333333', '#555555', '#999999', '#CCCCCC',
     '#FF4500', '#FF0066', '#0066FF', '#00AA44', '#7700FF',
   ],
+
+  escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  },
+
+  escapeAttr(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  },
 };

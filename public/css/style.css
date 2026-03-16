@@ -1420,6 +1420,89 @@ body.dark .board-dropdown-item .board-name {
   letter-spacing: 1px;
 }
 
+/* Suggestion actions (edit/delete) */
+.suggestion-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.suggestion-item-lb:hover .suggestion-actions {
+  opacity: 1;
+}
+
+.sug-btn {
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: 1px solid var(--light-grey);
+  color: var(--dark-grey);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+  padding: 0;
+  line-height: 1;
+}
+
+.sug-btn:hover {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+.sug-del:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.sug-save {
+  color: #00AA44;
+  border-color: #00AA44;
+}
+
+.sug-save:hover {
+  background: #00AA44;
+  color: var(--white);
+  border-color: #00AA44;
+}
+
+.sug-cancel:hover {
+  background: var(--dark-grey);
+  border-color: var(--dark-grey);
+}
+
+/* Inline edit input */
+.sug-edit-input {
+  width: 100%;
+  background: var(--off-white);
+  border: 1px solid var(--accent);
+  color: var(--black);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 6px 8px;
+  outline: none;
+  line-height: 1.4;
+}
+
+.sug-edit-input:focus {
+  border-color: var(--accent);
+  background: var(--white);
+}
+
+/* Edited label */
+.suggestion-edited {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-style: italic;
+  color: var(--mid-grey);
+  letter-spacing: 0.3px;
+}
+
 /* Dark mode suggestions */
 body.dark #suggestions-trigger {
   background: #1A1A1A;
@@ -1742,6 +1825,271 @@ body.dark .dash-btn-new:hover {
 /* ═══════════════════════════════════════════════════════
    SCROLLBAR
    ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   TODO LIST ELEMENT
+   ═══════════════════════════════════════════════════════ */
+.el-todo {
+  background: var(--white);
+  border: 1px solid var(--black);
+  padding: 0;
+  font-family: var(--font-mono);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.todo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--light-grey);
+}
+
+.todo-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--pure-black);
+  text-transform: uppercase;
+}
+
+.todo-count {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--dark-grey);
+  letter-spacing: 0.5px;
+}
+
+.todo-items {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--light-grey);
+  transition: background 0.05s;
+}
+
+.todo-item:last-child { border-bottom: none; }
+
+.todo-item:hover { background: var(--off-white); }
+
+.todo-item.done .todo-item-text {
+  text-decoration: line-through;
+  opacity: 0.45;
+}
+
+.todo-check {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--black);
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  padding: 0;
+  transition: border-color 0.1s;
+}
+
+.todo-check:hover { border-color: var(--accent); }
+
+.todo-item.done .todo-check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--white);
+}
+
+.todo-item-text {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--black);
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  cursor: default;
+}
+
+.todo-assignee {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--black);
+  color: var(--white);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.todo-assignee:hover { background: var(--accent); }
+
+.todo-add-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--light-grey);
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--dark-grey);
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.1s, background 0.1s;
+}
+
+.todo-add-btn:hover {
+  color: var(--accent);
+  background: var(--off-white);
+}
+
+.todo-add-row {
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--light-grey);
+}
+
+.todo-add-input, .todo-edit-input {
+  flex: 1;
+  background: var(--off-white);
+  border: 1px solid var(--mid-grey);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 4px 8px;
+  color: var(--black);
+  outline: none;
+}
+
+.todo-add-input:focus, .todo-edit-input:focus {
+  border-color: var(--accent);
+}
+
+.todo-add-confirm, .todo-add-cancel {
+  background: none;
+  border: 1px solid var(--mid-grey);
+  color: var(--charcoal);
+  cursor: pointer;
+  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.todo-add-confirm:hover { border-color: var(--accent); color: var(--accent); }
+.todo-add-cancel:hover { border-color: var(--black); color: var(--black); }
+
+/* Todo context menu */
+.todo-ctx-menu {
+  position: fixed;
+  background: var(--white);
+  border: 1px solid var(--black);
+  z-index: 9000;
+  min-width: 150px;
+  font-family: var(--font-mono);
+}
+
+.todo-ctx-item {
+  padding: 8px 14px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--charcoal);
+  cursor: pointer;
+  transition: background 0.05s;
+}
+
+.todo-ctx-item:hover { background: var(--off-white); color: var(--black); }
+.todo-ctx-danger:hover { background: var(--accent); color: var(--white); }
+.todo-ctx-separator { height: 1px; background: var(--light-grey); margin: 2px 0; }
+
+/* Todo user picker */
+.todo-user-picker {
+  position: fixed;
+  background: var(--white);
+  border: 1px solid var(--black);
+  z-index: 9000;
+  min-width: 160px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+}
+
+.todo-picker-header {
+  padding: 8px 12px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--dark-grey);
+  border-bottom: 1px solid var(--light-grey);
+}
+
+.todo-picker-option {
+  padding: 7px 12px;
+  font-size: 10px;
+  color: var(--charcoal);
+  cursor: pointer;
+  transition: background 0.05s;
+}
+
+.todo-picker-option:hover { background: var(--off-white); color: var(--black); }
+.todo-picker-option.active { background: var(--accent)10; color: var(--accent); font-weight: 600; }
+
+/* Suggestion done badge in lightbox */
+.suggestion-done-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #00AA44;
+  margin-left: 6px;
+}
+
+.suggestion-item-lb.done .suggestion-text-lb {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.suggestion-bullet.done { color: #00AA44; }
+
+/* Dark mode for todo */
+body.dark .el-todo { background: var(--near-black); border-color: var(--charcoal); }
+body.dark .todo-header { border-color: var(--charcoal); }
+body.dark .todo-title { color: var(--white); }
+body.dark .todo-item { border-color: var(--charcoal); }
+body.dark .todo-item:hover { background: #2a2a2a; }
+body.dark .todo-item-text { color: var(--light-grey); }
+body.dark .todo-check { border-color: var(--light-grey); }
+body.dark .todo-add-btn { border-color: var(--charcoal); }
+body.dark .todo-add-btn:hover { background: #2a2a2a; }
+body.dark .todo-add-input, body.dark .todo-edit-input { background: #2a2a2a; border-color: var(--charcoal); color: var(--white); }
+body.dark .todo-ctx-menu { background: var(--near-black); border-color: var(--charcoal); }
+body.dark .todo-ctx-item { color: var(--light-grey); }
+body.dark .todo-ctx-item:hover { background: #2a2a2a; }
+body.dark .todo-user-picker { background: var(--near-black); border-color: var(--charcoal); }
+body.dark .todo-picker-option { color: var(--light-grey); }
+body.dark .todo-picker-option:hover { background: #2a2a2a; }
+body.dark .todo-assignee { background: var(--light-grey); color: var(--black); }
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--mid-grey); }

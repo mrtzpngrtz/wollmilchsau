@@ -2,6 +2,7 @@
 const Storage = {
   autoSaveInterval: null,
   currentBoard: 'default',
+  currentBoardOwner: null,  // null = own board, string = shared board owner
   dropdownOpen: false,
 
   init() {
@@ -79,19 +80,21 @@ const Storage = {
       }
 
       boards.forEach(board => {
+        const isShared = board.shared;
+        const isCurrent = board.name === this.currentBoard && (isShared ? this.currentBoardOwner === board.owner : !this.currentBoardOwner);
         const item = document.createElement('div');
-        item.className = 'board-dropdown-item' + (board.name === this.currentBoard ? ' active' : '');
+        item.className = 'board-dropdown-item' + (isCurrent ? ' active' : '');
 
         const left = document.createElement('div');
         left.className = 'board-item-left';
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'board-name';
-        nameSpan.textContent = board.name;
+        nameSpan.textContent = isShared ? `${board.name} (${board.owner})` : board.name;
 
         const info = document.createElement('div');
         info.className = 'board-info';
-        info.innerHTML = `<span>${board.elementCount || 0} items</span><span>·</span><span>${this.formatTimeAgo(board.lastEdit)}</span>`;
+        info.innerHTML = `<span>${board.elementCount || 0} items</span><span>·</span><span>${this.formatTimeAgo(board.lastEdit)}</span>${isShared ? '<span>·</span><span style="color:var(--accent)">SHARED</span>' : ''}`;
 
         left.appendChild(nameSpan);
         left.appendChild(info);
@@ -99,18 +102,30 @@ const Storage = {
         const actions = document.createElement('div');
         actions.className = 'board-actions';
 
-        const renameBtn = document.createElement('button');
-        renameBtn.className = 'board-action-btn';
-        renameBtn.textContent = '✎';
-        renameBtn.title = 'Rename';
+        if (!isShared) {
+          const renameBtn = document.createElement('button');
+          renameBtn.className = 'board-action-btn';
+          renameBtn.textContent = '✎';
+          renameBtn.title = 'Rename';
 
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'board-action-btn board-action-delete';
-        deleteBtn.textContent = '✕';
-        deleteBtn.title = 'Delete';
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'board-action-btn board-action-delete';
+          deleteBtn.textContent = '✕';
+          deleteBtn.title = 'Delete';
 
-        actions.appendChild(renameBtn);
-        actions.appendChild(deleteBtn);
+          actions.appendChild(renameBtn);
+          actions.appendChild(deleteBtn);
+
+          renameBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.renameBoard(board.name);
+          });
+
+          deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete board "${board.name}"?`)) this.deleteBoard(board.name);
+          });
+        }
 
         item.appendChild(left);
         item.appendChild(actions);
@@ -119,20 +134,8 @@ const Storage = {
         left.addEventListener('click', (e) => {
           e.stopPropagation();
           if (App.elements.length > 0) this.save(this.currentBoard);
-          this.load(board.name);
+          this.load(board.name, isShared ? board.owner : null);
           this.closeDropdown();
-        });
-
-        // Rename
-        renameBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.renameBoard(board.name);
-        });
-
-        // Delete
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (confirm(`Delete board "${board.name}"?`)) this.deleteBoard(board.name);
         });
 
         list.appendChild(item);
@@ -232,6 +235,11 @@ const Storage = {
     document.title = `WOLLMILCHSAU — ${this.currentBoard}`;
   },
 
+  getBoardApiPath(name, owner) {
+    if (owner) return `/api/boards/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
+    return `/api/boards/${encodeURIComponent(name)}`;
+  },
+
   async save(name) {
     this.currentBoard = name;
     this.updateBoardName();
@@ -241,7 +249,8 @@ const Storage = {
       viewport: { panX: Canvas.panX, panY: Canvas.panY, zoom: Canvas.zoom },
     };
     try {
-      await fetch(`/api/boards/${encodeURIComponent(name)}`, {
+      const url = this.getBoardApiPath(name, this.currentBoardOwner);
+      await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -251,9 +260,11 @@ const Storage = {
     }
   },
 
-  async load(name) {
+  async load(name, owner) {
     try {
-      const res = await fetch(`/api/boards/${encodeURIComponent(name)}`);
+      this.currentBoardOwner = owner || null;
+      const url = this.getBoardApiPath(name, owner);
+      const res = await fetch(url);
       const data = await res.json();
 
       App.elements = data.elements || [];
@@ -277,7 +288,7 @@ const Storage = {
       History.clear();
       History.push({ elements: App.elements, connections: App.connections });
 
-      console.log(`Board "${name}" loaded`);
+      console.log(`Board "${name}" loaded${owner ? ` (shared by ${owner})` : ''}`);
     } catch (err) {
       console.error('Load failed:', err);
     }
@@ -335,6 +346,7 @@ const Storage = {
       }
 
       boards.forEach(board => {
+        const isShared = board.shared;
         const card = document.createElement('div');
         card.className = 'dash-card';
 
@@ -350,38 +362,47 @@ const Storage = {
           ${board.created ? `<span>created ${this.formatTimeAgo(board.created)}</span>` : ''}
         `;
 
+        if (isShared) {
+          const badge = document.createElement('div');
+          badge.className = 'dash-card-badge';
+          badge.textContent = `SHARED BY ${board.owner.toUpperCase()}`;
+          card.appendChild(badge);
+        }
+
         const actions = document.createElement('div');
         actions.className = 'dash-card-actions';
 
-        const renameBtn = document.createElement('button');
-        renameBtn.className = 'dash-card-action';
-        renameBtn.textContent = '✎';
-        renameBtn.title = 'Rename';
-        renameBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.renameBoard(board.name).then(() => this.refreshDashboard());
-        });
+        if (!isShared) {
+          const renameBtn = document.createElement('button');
+          renameBtn.className = 'dash-card-action';
+          renameBtn.textContent = '✎';
+          renameBtn.title = 'Rename';
+          renameBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.renameBoard(board.name).then(() => this.refreshDashboard());
+          });
 
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'dash-card-action danger';
-        deleteBtn.textContent = '✕';
-        deleteBtn.title = 'Delete';
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (confirm(`Delete board "${board.name}"?`)) {
-            this.deleteBoardOnly(board.name).then(() => this.refreshDashboard());
-          }
-        });
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'dash-card-action danger';
+          deleteBtn.textContent = '✕';
+          deleteBtn.title = 'Delete';
+          deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete board "${board.name}"?`)) {
+              this.deleteBoardOnly(board.name).then(() => this.refreshDashboard());
+            }
+          });
 
-        actions.appendChild(renameBtn);
-        actions.appendChild(deleteBtn);
+          actions.appendChild(renameBtn);
+          actions.appendChild(deleteBtn);
+        }
 
         card.appendChild(name);
         card.appendChild(meta);
         card.appendChild(actions);
 
         card.addEventListener('click', () => {
-          this.load(board.name);
+          this.load(board.name, isShared ? board.owner : null);
           this.hideDashboard();
         });
 

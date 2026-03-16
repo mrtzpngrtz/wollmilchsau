@@ -467,6 +467,32 @@ html, body {
   letter-spacing: 0.3px;
 }
 
+/* Collaborator rows */
+.collab-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color, #E8E8E8);
+  margin-bottom: -1px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+}
+
+.collab-name {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.suggestion-actions-admin { display:flex; gap:4px; align-items:center; }
+.suggestion-toggle { background:none; border:1px solid #00AA44; color:#00AA44; cursor:pointer; padding:2px 8px; font:600 10px/1.4 'Roboto Mono',monospace; letter-spacing:0.04em; }
+.suggestion-toggle:hover { background:#00AA4420; }
+.suggestion-toggle.reopen { border-color:#999; color:#999; }
+.suggestion-toggle.reopen:hover { background:#99999920; }
+.suggestion-row.done .suggestion-text { text-decoration:line-through; opacity:0.5; }
+.suggestion-row.done .suggestion-bullet { color:#00AA44; }
+.suggestion-bullet.done { color:#00AA44; }
+
 .suggestion-delete {
   background: none;
   border: none;

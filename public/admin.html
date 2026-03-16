@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WOLLMILCHSAU — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <span class="brand-mark">●</span>
+      <span class="brand-name">WMS</span>
+      <span class="brand-tag">ADMIN</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-section="overview">
+        <span class="nav-idx">01</span>
+        <span class="nav-label">OVERVIEW</span>
+      </button>
+      <button class="nav-item" data-section="users">
+        <span class="nav-idx">02</span>
+        <span class="nav-label">USERS</span>
+      </button>
+      <button class="nav-item" data-section="boards">
+        <span class="nav-idx">03</span>
+        <span class="nav-label">BOARDS</span>
+      </button>
+      <button class="nav-item" data-section="suggestions">
+        <span class="nav-idx">04</span>
+        <span class="nav-label">SUGGESTIONS</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-divider"></div>
+      <a href="/" class="nav-link">← CANVAS</a>
+      <button id="admin-logout" class="nav-link nav-danger">LOGOUT</button>
+      <div class="sidebar-meta">
+        <span id="admin-username">admin</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main id="main">
+
+    <!-- Section: Overview -->
+    <section id="section-overview" class="section active">
+      <div class="section-header">
+        <h1 class="section-title">OVERVIEW</h1>
+        <span class="section-sub">SYSTEM DASHBOARD</span>
+      </div>
+
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">USERS</div>
+          <div class="stat-value" id="stat-users">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">BOARDS</div>
+          <div class="stat-value" id="stat-boards">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">ELEMENTS</div>
+          <div class="stat-value" id="stat-elements">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">SUGGESTIONS</div>
+          <div class="stat-value" id="stat-suggestions">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">UPLOADS</div>
+          <div class="stat-value" id="stat-uploads">—</div>
+        </div>
+      </div>
+
+      <div class="info-block">
+        <div class="info-label">SYSTEM</div>
+        <div class="info-row"><span>Application</span><span>WOLLMILCHSAU v1.0.0</span></div>
+        <div class="info-row"><span>Stack</span><span>Node.js + Express + Vanilla JS</span></div>
+        <div class="info-row"><span>Storage</span><span>JSON File-Based</span></div>
+        <div class="info-row"><span>Auth</span><span>Session + bcrypt</span></div>
+      </div>
+    </section>
+
+    <!-- Section: Users -->
+    <section id="section-users" class="section">
+      <div class="section-header">
+        <h1 class="section-title">USERS</h1>
+        <span class="section-sub">USER MANAGEMENT</span>
+        <button class="header-btn" id="btn-add-user">+ NEW USER</button>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="users-table">
+          <thead>
+            <tr>
+              <th>USERNAME</th>
+              <th>DISPLAY NAME</th>
+              <th>ROLE</th>
+              <th>BOARDS</th>
+              <th>LAST LOGIN</th>
+              <th>CREATED</th>
+              <th>ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section: Boards -->
+    <section id="section-boards" class="section">
+      <div class="section-header">
+        <h1 class="section-title">BOARDS</h1>
+        <span class="section-sub">ALL BOARDS ACROSS USERS</span>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table" id="boards-table">
+          <thead>
+            <tr>
+              <th>BOARD NAME</th>
+              <th>OWNER</th>
+              <th>ELEMENTS</th>
+              <th>LAST EDIT</th>
+              <th>CREATED</th>
+              <th>ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody id="boards-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section: Suggestions -->
+    <section id="section-suggestions" class="section">
+      <div class="section-header">
+        <h1 class="section-title">SUGGESTIONS</h1>
+        <span class="section-sub">FEATURE REQUESTS</span>
+      </div>
+
+      <div id="suggestions-list" class="suggestions-list"></div>
+    </section>
+  </main>
+
+  <!-- Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-idx">●</span>
+        <span id="modal-title">MODAL</span>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

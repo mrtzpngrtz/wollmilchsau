@@ -49,6 +49,12 @@
       <div class="topbar-separator"></div>
       <button id="btn-save" class="topbar-btn" title="Save (Ctrl+S)">SAVE</button>
       <button id="btn-load" class="topbar-btn" title="Load (Ctrl+O)">LOAD</button>
+      <div class="topbar-separator"></div>
+      <a id="btn-admin" href="/admin" class="topbar-btn hidden" title="Admin Panel">ADMIN</a>
+      <div class="user-info">
+        <span class="user-name" id="user-display-name"></span>
+        <button id="btn-logout" class="topbar-btn topbar-btn-logout" title="Logout">LOGOUT</button>
+      </div>
     </div>
   </div>
 
@@ -162,6 +168,27 @@
         <input type="text" id="board-name-input" placeholder="BOARD NAME..." />
         <div id="board-list"></div>
         <button id="save-confirm" class="btn-primary">SAVE →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestions Trigger -->
+  <button id="suggestions-trigger" title="Feature Requests">💡</button>
+
+  <!-- Suggestions Lightbox -->
+  <div id="suggestions-lightbox" class="modal hidden">
+    <div class="modal-content suggestions-modal">
+      <div class="modal-header">
+        <span class="modal-idx">●</span>
+        <span>FEATURE REQUESTS</span>
+        <button class="modal-close" id="suggestions-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="suggestions-list" class="suggestions-list-lb"></div>
+      </div>
+      <div class="suggestions-footer">
+        <input type="text" id="suggestion-input" placeholder="Describe your idea..." />
+        <button id="suggestion-submit">→</button>
       </div>
     </div>
   </div>

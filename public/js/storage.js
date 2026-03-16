@@ -311,6 +311,121 @@ const Storage = {
     this.loadBoardList(document.getElementById('board-list'), true);
   },
 
+  // ═══ DASHBOARD ═══
+  showDashboard() {
+    const dash = document.getElementById('boards-dashboard');
+    dash.classList.remove('hidden');
+    this.refreshDashboard();
+  },
+
+  hideDashboard() {
+    document.getElementById('boards-dashboard').classList.add('hidden');
+  },
+
+  async refreshDashboard() {
+    const grid = document.getElementById('dashboard-grid');
+    try {
+      const res = await fetch('/api/boards');
+      const boards = await res.json();
+      grid.innerHTML = '';
+
+      if (boards.length === 0) {
+        grid.innerHTML = '<div style="padding:20px;font-family:var(--font-mono);font-size:11px;color:var(--dark-grey);letter-spacing:1px;grid-column:1/-1">No boards yet. Create your first board above.</div>';
+        return;
+      }
+
+      boards.forEach(board => {
+        const card = document.createElement('div');
+        card.className = 'dash-card';
+
+        const name = document.createElement('div');
+        name.className = 'dash-card-name';
+        name.textContent = board.name;
+
+        const meta = document.createElement('div');
+        meta.className = 'dash-card-meta';
+        meta.innerHTML = `
+          <span>${board.elementCount || 0} elements</span>
+          <span>edited ${this.formatTimeAgo(board.lastEdit)}</span>
+          ${board.created ? `<span>created ${this.formatTimeAgo(board.created)}</span>` : ''}
+        `;
+
+        const actions = document.createElement('div');
+        actions.className = 'dash-card-actions';
+
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'dash-card-action';
+        renameBtn.textContent = '✎';
+        renameBtn.title = 'Rename';
+        renameBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.renameBoard(board.name).then(() => this.refreshDashboard());
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'dash-card-action danger';
+        deleteBtn.textContent = '✕';
+        deleteBtn.title = 'Delete';
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm(`Delete board "${board.name}"?`)) {
+            this.deleteBoardOnly(board.name).then(() => this.refreshDashboard());
+          }
+        });
+
+        actions.appendChild(renameBtn);
+        actions.appendChild(deleteBtn);
+
+        card.appendChild(name);
+        card.appendChild(meta);
+        card.appendChild(actions);
+
+        card.addEventListener('click', () => {
+          this.load(board.name);
+          this.hideDashboard();
+        });
+
+        grid.appendChild(card);
+      });
+    } catch (err) {
+      console.error('Failed to load dashboard:', err);
+    }
+  },
+
+  async deleteBoardOnly(name) {
+    try {
+      await fetch(`/api/boards/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+  },
+
+  initDashboard() {
+    document.getElementById('dashboard-new-board').addEventListener('click', () => {
+      const name = prompt('Board name:');
+      if (!name || !name.trim()) return;
+      const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+      
+      App.elements = [];
+      App.connections = [];
+      this.currentBoard = cleanName;
+      this.updateBoardName();
+      Elements.clearSelection();
+      Elements.renderAll();
+      Connections.render();
+      Canvas.panX = window.innerWidth / 2;
+      Canvas.panY = (window.innerHeight - 40) / 2;
+      Canvas.zoom = 1;
+      Canvas.updateTransform();
+      Canvas.drawGrid();
+      Canvas.updateMinimap();
+      History.clear();
+      History.push({ elements: [], connections: [] });
+      this.save(cleanName);
+      this.hideDashboard();
+    });
+  },
+
   async loadBoardList(container, clickToLoad) {
     try {
       const res = await fetch('/api/boards');

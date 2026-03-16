@@ -20,8 +20,16 @@ const App = {
     History.push({ elements: [], connections: [] });
     History.updateButtons();
 
-    // Try loading default board
-    Storage.load('default').catch(() => {});
+    // Dashboard
+    Storage.initDashboard();
+    Storage.showDashboard();
+
+    // Click brand name to open dashboard
+    document.querySelector('.brand-name').style.cursor = 'pointer';
+    document.querySelector('.brand-name').addEventListener('click', () => {
+      if (App.elements.length > 0) Storage.save(Storage.currentBoard);
+      Storage.showDashboard();
+    });
 
     // Dark mode
     this.initDarkMode();

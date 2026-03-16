@@ -1,0 +1,264 @@
+/* === WOLLMILCHSAU — Main App === */
+const App = {
+  elements: [],
+  connections: [],
+  currentTool: 'select',
+  _pendingImagePos: null,
+
+  init() {
+    Canvas.init();
+    Elements.init();
+    Connections.init();
+    Toolbar.init();
+    ContextMenu.init();
+    Storage.init();
+    this.initDragDrop();
+    this.initFileInput();
+    this.initIconPicker();
+
+    // Push initial empty state
+    History.push({ elements: [], connections: [] });
+    History.updateButtons();
+
+    // Try loading default board
+    Storage.load('default').catch(() => {});
+
+    // Dark mode
+    this.initDarkMode();
+
+    console.log('WOLLMILCHSAU v1.0.0 — Ready');
+    console.log('Keys: V=Select H=Pan T=Text N=Note R=Rect A=Arrow Space=Pan');
+  },
+
+  initDarkMode() {
+    const saved = localStorage.getItem('wms-darkmode');
+    if (saved === 'true') {
+      document.body.classList.add('dark');
+    }
+    document.getElementById('btn-darkmode').addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      const isDark = document.body.classList.contains('dark');
+      localStorage.setItem('wms-darkmode', isDark);
+      // Redraw grid with correct colors
+      Canvas.drawGrid();
+      Canvas.updateMinimap();
+    });
+  },
+
+  setTool(tool) {
+    this.currentTool = tool;
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tool === tool);
+    });
+    const container = Canvas.container;
+    container.className = '';
+    if (tool === 'pan') container.classList.add('panning');
+    else if (['text'].includes(tool)) container.classList.add('tool-text');
+    else if (['rect', 'circle', 'note'].includes(tool)) container.classList.add('tool-rect');
+    else if (tool === 'arrow') container.classList.add('tool-arrow');
+
+    if (tool === 'icon') {
+      const center = Canvas.screenToCanvas(window.innerWidth / 2, window.innerHeight / 2);
+      this.showIconPicker(center.x, center.y);
+    }
+  },
+
+  saveState() {
+    History.push({
+      elements: JSON.parse(JSON.stringify(this.elements)),
+      connections: JSON.parse(JSON.stringify(this.connections)),
+    });
+  },
+
+  undo() {
+    const state = History.undo();
+    if (state) {
+      this.elements = state.elements;
+      this.connections = state.connections;
+      Elements.clearSelection();
+      Elements.renderAll();
+      Connections.render();
+      Canvas.updateMinimap();
+    }
+  },
+
+  redo() {
+    const state = History.redo();
+    if (state) {
+      this.elements = state.elements;
+      this.connections = state.connections;
+      Elements.clearSelection();
+      Elements.renderAll();
+      Connections.render();
+      Canvas.updateMinimap();
+    }
+  },
+
+  initDragDrop() {
+    const dropZone = document.getElementById('drop-zone');
+    let dragCounter = 0;
+
+    document.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      dragCounter++;
+      dropZone.classList.remove('hidden');
+    });
+
+    document.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dropZone.classList.add('hidden');
+        dragCounter = 0;
+      }
+    });
+
+    document.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    document.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      dropZone.classList.add('hidden');
+      dragCounter = 0;
+
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
+
+      const canvasPos = Canvas.screenToCanvas(e.clientX, e.clientY);
+      let offsetX = 0;
+
+      for (const file of files) {
+        await this.addFileToCanvas(file, canvasPos.x + offsetX, canvasPos.y);
+        offsetX += 220;
+      }
+    });
+  },
+
+  initFileInput() {
+    const fileInput = document.getElementById('file-input');
+    fileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+
+      const pos = this._pendingImagePos || Canvas.screenToCanvas(window.innerWidth / 2, window.innerHeight / 2);
+      let offsetX = 0;
+
+      for (const file of files) {
+        await this.addFileToCanvas(file, pos.x + offsetX, pos.y);
+        offsetX += 220;
+      }
+
+      this._pendingImagePos = null;
+      fileInput.value = '';
+      fileInput.accept = 'image/*,.pdf,.doc,.docx,.txt,.svg';
+      this.setTool('select');
+    });
+  },
+
+  async addFileToCanvas(file, x, y) {
+    try {
+      const result = await Utils.uploadFile(file);
+
+      if (file.type.startsWith('image/')) {
+        const img = new Image();
+        img.src = result.url;
+        await new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+
+        const maxW = 400;
+        const ratio = img.naturalWidth / img.naturalHeight;
+        const width = Math.min(img.naturalWidth, maxW);
+        const height = width / ratio;
+
+        const data = Elements.create('image', x, y, {
+          url: result.url,
+          originalName: result.originalName,
+          width, height,
+        });
+        this.elements.push(data);
+        Elements.renderElement(data);
+        Elements.select(data.id);
+      } else {
+        const data = Elements.create('file', x, y, {
+          url: result.url,
+          originalName: result.originalName,
+          fileSize: result.size,
+          mimetype: result.mimetype,
+        });
+        this.elements.push(data);
+        Elements.renderElement(data);
+        Elements.select(data.id);
+      }
+
+      this.saveState();
+      Canvas.updateMinimap();
+    } catch (err) {
+      console.error('Upload failed:', err);
+    }
+  },
+
+  initIconPicker() {
+    const modal = document.getElementById('icon-picker');
+    const grid = document.getElementById('icon-grid');
+    const search = document.getElementById('icon-search');
+
+    this._iconPickerPos = { x: 0, y: 0 };
+
+    const renderIcons = (filter = '') => {
+      grid.innerHTML = '';
+      Utils.ICONS.forEach(icon => {
+        if (filter && !icon.includes(filter)) return;
+        const div = document.createElement('div');
+        div.className = 'icon-option';
+        div.textContent = icon;
+        div.addEventListener('click', () => {
+          const data = Elements.create('icon', this._iconPickerPos.x, this._iconPickerPos.y, { icon });
+          this.elements.push(data);
+          Elements.renderElement(data);
+          Elements.select(data.id);
+          this.saveState();
+          Canvas.updateMinimap();
+          modal.classList.add('hidden');
+          this.setTool('select');
+        });
+        grid.appendChild(div);
+      });
+    };
+
+    search.addEventListener('input', () => renderIcons(search.value));
+    renderIcons();
+  },
+
+  showIconPicker(x, y) {
+    this._iconPickerPos = { x, y };
+    const modal = document.getElementById('icon-picker');
+    modal.classList.remove('hidden');
+    const search = document.getElementById('icon-search');
+    search.value = '';
+    search.focus();
+
+    const grid = document.getElementById('icon-grid');
+    grid.innerHTML = '';
+    Utils.ICONS.forEach(icon => {
+      const div = document.createElement('div');
+      div.className = 'icon-option';
+      div.textContent = icon;
+      div.addEventListener('click', () => {
+        const data = Elements.create('icon', this._iconPickerPos.x, this._iconPickerPos.y, { icon });
+        this.elements.push(data);
+        Elements.renderElement(data);
+        Elements.select(data.id);
+        this.saveState();
+        Canvas.updateMinimap();
+        modal.classList.add('hidden');
+        this.setTool('select');
+      });
+      grid.appendChild(div);
+    });
+  },
+};
+
+document.addEventListener('DOMContentLoaded', () => App.init());

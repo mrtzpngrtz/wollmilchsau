@@ -1,6 +1,6 @@
 # WOLLMILCHSAU
 
-Infinite canvas moodboard app with Industrial Swiss Minimalism design.
+Infinite canvas that can do it all.
 
 ![Screenshot](screenshot.png)
 

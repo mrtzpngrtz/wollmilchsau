@@ -1013,7 +1013,7 @@ wss.on('connection', (ws) => {
 // ═══════════════════════════════════════════════════════
 //  START
 // ═══════════════════════════════════════════════════════
-server.listen(PORT, () => {
-  console.log(`WOLLMILCHSAU running at http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`WOLLMILCHSAU running on port ${PORT}`);
   console.log('Default login: admin / admin');
 });

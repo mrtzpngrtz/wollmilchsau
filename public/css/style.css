@@ -1620,6 +1620,24 @@ body.dark #suggestion-submit:hover {
 
 .dashboard-actions {
   margin-bottom: 24px;
+  display: flex;
+  gap: 8px;
+}
+
+#dashboard-import-board {
+  color: var(--black) !important;
+}
+#dashboard-import-board:hover {
+  background: var(--black) !important;
+  color: var(--white) !important;
+}
+body.dark #dashboard-import-board {
+  color: var(--white) !important;
+  border-color: #444 !important;
+}
+body.dark #dashboard-import-board:hover {
+  background: #E8E8E8 !important;
+  color: #1A1A1A !important;
 }
 
 .dash-btn-new {

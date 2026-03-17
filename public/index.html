@@ -52,10 +52,6 @@
       <button id="btn-save" class="topbar-btn" title="Save (Ctrl+S)">SAVE</button>
       <button id="btn-load" class="topbar-btn" title="Load (Ctrl+O)">LOAD</button>
       <div class="topbar-separator"></div>
-      <button id="btn-download-board" class="topbar-btn" title="Download board as JSON">↓ JSON</button>
-      <button id="btn-upload-board" class="topbar-btn" title="Upload board from JSON">↑ JSON</button>
-      <input type="file" id="board-upload-input" accept=".json" style="display:none">
-      <div class="topbar-separator"></div>
       <a id="btn-admin" href="/admin" class="topbar-btn hidden" title="Admin Panel">ADMIN</a>
       <div class="user-info">
         <span id="collab-status-dot" class="collab-status-dot" title="Connecting..."></span>
@@ -232,6 +228,8 @@
       </div>
       <div class="dashboard-actions">
         <button id="dashboard-new-board" class="dash-btn-new">+ NEW BOARD</button>
+        <button id="dashboard-import-board" class="dash-btn-new" style="background:none;border:var(--border);color:var(--black);">↑ IMPORT JSON</button>
+        <input type="file" id="dashboard-import-input" accept=".json" style="display:none">
       </div>
       <div id="dashboard-grid"></div>
       <div class="dashboard-footer">

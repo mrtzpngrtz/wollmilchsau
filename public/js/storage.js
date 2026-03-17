@@ -25,16 +25,6 @@ const Storage = {
 
     this.initBoardSwitcher();
 
-    document.getElementById('btn-download-board').addEventListener('click', () => this.downloadBoard());
-
-    const uploadInput = document.getElementById('board-upload-input');
-    document.getElementById('btn-upload-board').addEventListener('click', () => uploadInput.click());
-    uploadInput.addEventListener('change', (e) => {
-      if (e.target.files[0]) {
-        this.uploadBoard(e.target.files[0]);
-        e.target.value = '';
-      }
-    });
   },
 
   initBoardSwitcher() {
@@ -507,6 +497,16 @@ const Storage = {
         const actions = document.createElement('div');
         actions.className = 'dash-card-actions';
 
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'dash-card-action';
+        downloadBtn.textContent = '↓';
+        downloadBtn.title = 'Download as JSON';
+        downloadBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.downloadBoardByName(board.name, isShared ? board.owner : null, downloadBtn);
+        });
+        actions.appendChild(downloadBtn);
+
         if (!isShared) {
           const renameBtn = document.createElement('button');
           renameBtn.className = 'dash-card-action';
@@ -555,6 +555,15 @@ const Storage = {
   },
 
   initDashboard() {
+    const importInput = document.getElementById('dashboard-import-input');
+    document.getElementById('dashboard-import-board').addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) {
+        this.importBoardFromJson(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+
     document.getElementById('dashboard-new-board').addEventListener('click', () => {
       const name = prompt('Board name:');
       if (!name || !name.trim()) return;
@@ -581,99 +590,95 @@ const Storage = {
     });
   },
 
-  async downloadBoard() {
-    const btn = document.getElementById('btn-download-board');
-    btn.textContent = '…';
-    btn.disabled = true;
-    try {
-      const elements = JSON.parse(JSON.stringify(App.elements));
-
-      // Embed all server-hosted files as base64 data URLs
-      await Promise.all(elements.map(async el => {
-        if ((el.type === 'image' || el.type === 'file') && el.url && el.url.startsWith('/uploads/')) {
-          try {
-            const res = await fetch(el.url);
-            const blob = await res.blob();
-            el._embedded = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-          } catch (err) {
-            console.warn('Could not embed file:', el.url, err);
-          }
+  async _embedFiles(elements) {
+    await Promise.all(elements.map(async el => {
+      if ((el.type === 'image' || el.type === 'file') && el.url && el.url.startsWith('/uploads/')) {
+        try {
+          const res = await fetch(el.url);
+          const blob = await res.blob();
+          el._embedded = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch (err) {
+          console.warn('Could not embed file:', el.url, err);
         }
-      }));
+      }
+    }));
+  },
 
-      const data = {
-        elements,
-        connections: App.connections,
-        viewport: { panX: Canvas.panX, panY: Canvas.panY, zoom: Canvas.zoom },
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+  async _reuploadEmbedded(elements) {
+    await Promise.all(elements.map(async el => {
+      if (el._embedded) {
+        try {
+          const res = await fetch(el._embedded);
+          const blob = await res.blob();
+          const formData = new FormData();
+          formData.append('file', blob, el.originalName || `file_${el.id}`);
+          const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+          const uploadData = await uploadRes.json();
+          if (uploadData.url) el.url = uploadData.url;
+        } catch (err) {
+          console.warn('Could not re-upload embedded file:', err);
+        }
+        delete el._embedded;
+      }
+    }));
+  },
+
+  async downloadBoardByName(name, owner, btn) {
+    const orig = btn ? btn.textContent : null;
+    if (btn) { btn.textContent = '…'; btn.disabled = true; }
+    try {
+      const url = this.getBoardApiPath(name, owner);
+      const res = await fetch(url);
+      const data = await res.json();
+      const elements = JSON.parse(JSON.stringify(data.elements || []));
+      await this._embedFiles(elements);
+      const out = { elements, connections: data.connections || [], viewport: data.viewport || {} };
+      const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `${this.currentBoard}.json`;
+      a.href = blobUrl;
+      a.download = `${name}.json`;
       a.click();
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(blobUrl);
     } finally {
-      btn.textContent = '↓ JSON';
-      btn.disabled = false;
+      if (btn) { btn.textContent = orig; btn.disabled = false; }
     }
   },
 
-  uploadBoard(file) {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = JSON.parse(e.target.result);
-        if (!Array.isArray(data.elements)) throw new Error('Invalid board file');
+  async importBoardFromJson(file) {
+    let data;
+    try {
+      data = JSON.parse(await file.text());
+      if (!Array.isArray(data.elements)) throw new Error('Missing elements array');
+    } catch (err) {
+      alert('Invalid board file: ' + err.message);
+      return;
+    }
 
-        // Re-upload any embedded files to this server
-        await Promise.all(data.elements.map(async el => {
-          if (el._embedded) {
-            try {
-              const res = await fetch(el._embedded);
-              const blob = await res.blob();
-              const formData = new FormData();
-              formData.append('file', blob, el.originalName || `file_${el.id}`);
-              const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
-              const uploadData = await uploadRes.json();
-              if (uploadData.url) el.url = uploadData.url;
-            } catch (err) {
-              console.warn('Could not re-upload embedded file:', err);
-            }
-            delete el._embedded;
-          }
-        }));
+    const defaultName = file.name.replace(/\.json$/i, '').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const name = prompt('Import as board name:', defaultName);
+    if (!name || !name.trim()) return;
+    const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
 
-        App.elements = data.elements;
-        App.connections = data.connections || [];
+    const elements = data.elements;
+    await this._reuploadEmbedded(elements);
 
-        if (data.viewport) {
-          Canvas.panX = data.viewport.panX;
-          Canvas.panY = data.viewport.panY;
-          Canvas.zoom = data.viewport.zoom;
-          Canvas.updateTransform();
-          Canvas.drawGrid();
-        }
+    await fetch(`/api/boards/${encodeURIComponent(cleanName)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        elements,
+        connections: data.connections || [],
+        viewport: data.viewport || { panX: 0, panY: 0, zoom: 1 },
+      }),
+    });
 
-        Elements.maxZIndex = App.elements.reduce((max, el) => Math.max(max, el.zIndex || 0), 1);
-        Elements.clearSelection();
-        Elements.renderAll();
-        Connections.render();
-        Canvas.updateMinimap();
-        History.clear();
-        History.push({ elements: App.elements, connections: App.connections });
-
-        this.save(this.currentBoard);
-      } catch (err) {
-        alert('Failed to load board file: ' + err.message);
-      }
-    };
-    reader.readAsText(file);
+    this.refreshDashboard();
   },
 
   async loadBoardList(container, clickToLoad) {

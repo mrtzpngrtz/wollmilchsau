@@ -83,6 +83,27 @@ const Admin = {
     } catch (err) {
       console.error('Failed to load stats:', err);
     }
+
+    try {
+      const res = await fetch('/api/admin/settings');
+      const settings = await res.json();
+      const toggle = document.getElementById('toggle-registration');
+      const label = document.getElementById('toggle-registration-label');
+      toggle.checked = settings.registrationEnabled;
+      label.textContent = settings.registrationEnabled ? 'ENABLED' : 'DISABLED';
+
+      toggle.addEventListener('change', async () => {
+        const r = await fetch('/api/admin/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registrationEnabled: toggle.checked }),
+        });
+        const updated = await r.json();
+        label.textContent = updated.registrationEnabled ? 'ENABLED' : 'DISABLED';
+      });
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
   },
 
   // ═══ USERS ═══

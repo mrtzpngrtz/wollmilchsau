@@ -79,6 +79,13 @@
 
   <script>
     /* === LOGIN / REGISTER === */
+    // Hide register tab if registration is disabled
+    fetch('/api/config/public').then(r => r.json()).then(cfg => {
+      if (!cfg.registrationEnabled) {
+        document.querySelector('.login-tab[data-tab="register"]').style.display = 'none';
+      }
+    }).catch(() => {});
+
     const tabs = document.querySelectorAll('.login-tab');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');

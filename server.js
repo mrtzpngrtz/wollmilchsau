@@ -22,6 +22,16 @@ const PORT = 3000;
 //  USER DATABASE (JSON file-based)
 // ═══════════════════════════════════════════════════════
 const USERS_FILE = path.join(__dirname, 'data', '_users.json');
+const SETTINGS_FILE = path.join(__dirname, 'data', '_settings.json');
+
+function loadSettings() {
+  if (!fs.existsSync(SETTINGS_FILE)) return { registrationEnabled: true };
+  try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch { return { registrationEnabled: true }; }
+}
+
+function saveSettings(settings) {
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+}
 
 function loadUsers() {
   if (!fs.existsSync(USERS_FILE)) return [];
@@ -178,7 +188,16 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
+// Public config endpoint (no auth required)
+app.get('/api/config/public', (req, res) => {
+  const { registrationEnabled } = loadSettings();
+  res.json({ registrationEnabled });
+});
+
 app.post('/api/auth/register', (req, res) => {
+  const { registrationEnabled } = loadSettings();
+  if (!registrationEnabled) return res.status(403).json({ error: 'Registration is currently disabled' });
+
   const { username, password, displayName } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
@@ -870,6 +889,22 @@ app.patch('/api/admin/suggestions/:index/toggle-done', requireAdmin, (req, res) 
 
   fs.writeFileSync(suggestionsFile, JSON.stringify(suggestions, null, 2));
   res.json({ success: true, done: suggestions[idx].done });
+});
+
+// ═══════════════════════════════════════════════════════
+// Admin Settings
+// ═══════════════════════════════════════════════════════
+app.get('/api/admin/settings', requireAdmin, (req, res) => {
+  res.json(loadSettings());
+});
+
+app.patch('/api/admin/settings', requireAdmin, (req, res) => {
+  const settings = loadSettings();
+  if (typeof req.body.registrationEnabled === 'boolean') {
+    settings.registrationEnabled = req.body.registrationEnabled;
+  }
+  saveSettings(settings);
+  res.json(settings);
 });
 
 app.delete('/api/admin/suggestions/:index', requireAdmin, (req, res) => {

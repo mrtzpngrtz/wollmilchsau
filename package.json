@@ -1,6 +1,6 @@
 {
   "name": "moodboard-canvas",
-  "version": "1.0.0",
+  "version": "0.8.1",
   "description": "Infinite canvas moodboard app",
   "main": "server.js",
   "scripts": {

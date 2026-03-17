@@ -108,7 +108,7 @@ const Dialog = {
   _show(title, bodyHtml, onMount) {
     return new Promise(resolve => {
       const overlay = document.createElement('div');
-      overlay.className = 'modal';
+      overlay.className = 'modal modal-dialog';
       overlay.style.cssText = 'display:flex;';
       overlay.innerHTML = `
         <div class="modal-content modal-sm">

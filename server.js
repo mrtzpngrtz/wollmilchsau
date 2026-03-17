@@ -252,9 +252,37 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/auth/me', (req, res) => {
   if (req.session && req.session.user) {
-    return res.json({ user: req.session.user });
+    const users = loadUsers();
+    const user = users.find(u => u.id === req.session.user.id);
+    return res.json({ user: { ...req.session.user, email: user ? (user.email || '') : '' } });
   }
   res.status(401).json({ error: 'Not authenticated' });
+});
+
+app.put('/api/auth/profile', requireAuth, async (req, res) => {
+  const { displayName, email, currentPassword, newPassword } = req.body;
+  const users = loadUsers();
+  const idx = users.findIndex(u => u.id === req.session.user.id);
+  if (idx < 0) return res.status(404).json({ error: 'User not found' });
+
+  if (displayName !== undefined) {
+    const trimmed = displayName.trim();
+    if (trimmed) users[idx].displayName = trimmed;
+  }
+  if (email !== undefined) {
+    users[idx].email = email.trim();
+  }
+  if (newPassword) {
+    if (!currentPassword) return res.status(400).json({ error: 'Current password required' });
+    const valid = await bcrypt.compare(currentPassword, users[idx].passwordHash);
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+    if (newPassword.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    users[idx].passwordHash = await bcrypt.hash(newPassword, 10);
+  }
+
+  saveUsers(users);
+  req.session.user.displayName = users[idx].displayName;
+  res.json({ ok: true, displayName: users[idx].displayName, email: users[idx].email || '' });
 });
 
 // ═══════════════════════════════════════════════════════

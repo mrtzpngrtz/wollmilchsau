@@ -11,7 +11,7 @@ const Connections = {
 
   // Physics constants
   _N: 16,          // particles per thread
-  _GRAVITY: 160,   // canvas units / s²
+  _GRAVITY: 420,   // canvas units / s²
   _DAMPING: 0.988,
   _ITERS: 12,      // constraint iterations per step
   _SLACK: 1.3,     // rope length = SLACK × straight-line distance
@@ -61,7 +61,7 @@ const Connections = {
         const toId = target.dataset.id;
         const toData = Elements.getData(toId);
         const canvasPos = Canvas.screenToCanvas(e.clientX, e.clientY);
-        const toAnchor = this.closestAnchor(toData, canvasPos.x, canvasPos.y);
+        const toAnchor = toData.type === 'pin' ? 'center' : this.closestAnchor(toData, canvasPos.x, canvasPos.y);
 
         const exists = App.connections.some(c =>
           (c.from === this.drawing.fromId && c.to === toId) ||
@@ -75,7 +75,7 @@ const Connections = {
           App.connections.push({
             id: Utils.id(),
             from: this.drawing.fromId,
-            fromAnchor: this.drawing.fromAnchor,
+            fromAnchor: fromData?.type === 'pin' ? 'center' : this.drawing.fromAnchor,
             to: toId,
             toAnchor: toAnchor,
             style: isThread ? 'line' : 'arrow',

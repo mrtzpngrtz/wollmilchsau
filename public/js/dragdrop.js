@@ -67,28 +67,50 @@ const DragDrop = {
     });
   },
 
+  _showToast(name) {
+    const stack = document.getElementById('upload-progress-stack');
+    const toast = document.createElement('div');
+    toast.className = 'upload-toast';
+    const shortName = name.length > 28 ? name.slice(0, 25) + '…' : name;
+    toast.innerHTML = `
+      <div class="upload-toast-name">${Utils.escapeHtml(shortName)}</div>
+      <div class="upload-toast-bar-track"><div class="upload-toast-bar-fill" style="width:0%"></div></div>
+      <div class="upload-toast-pct">0%</div>`;
+    stack.appendChild(toast);
+    return {
+      update(pct) {
+        toast.querySelector('.upload-toast-bar-fill').style.width = pct + '%';
+        toast.querySelector('.upload-toast-pct').textContent = pct + '%';
+      },
+      done() {
+        toast.querySelector('.upload-toast-bar-fill').style.width = '100%';
+        toast.querySelector('.upload-toast-pct').textContent = '✓';
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 600);
+      },
+    };
+  },
+
   async addFileToCanvas(file, x, y) {
+    const toast = this._showToast(file.name);
     try {
-      const result = await Utils.uploadFile(file);
+      // Extract video thumbnail from local file before upload (instant)
+      let thumbnailUrl = null;
+      if (file.type.startsWith('video/')) {
+        thumbnailUrl = await Utils.extractVideoThumbnail(file);
+      }
+
+      const result = await Utils.uploadFile(file, pct => toast.update(pct));
+      toast.done();
 
       if (file.type.startsWith('image/')) {
         const img = new Image();
         img.src = result.url;
-        await new Promise((resolve) => {
-          img.onload = resolve;
-          img.onerror = resolve;
-        });
-
+        await new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
         const maxW = 400;
         const ratio = img.naturalWidth / img.naturalHeight;
         const width = Math.min(img.naturalWidth, maxW);
         const height = width / ratio;
-
-        const data = Elements.create('image', x, y, {
-          url: result.url,
-          originalName: result.originalName,
-          width, height,
-        });
+        const data = Elements.create('image', x, y, { url: result.url, originalName: result.originalName, width, height });
         App.elements.push(data);
         Elements.renderElement(data);
         Elements.select(data.id);
@@ -98,6 +120,7 @@ const DragDrop = {
           originalName: result.originalName,
           fileSize: result.size,
           mimetype: result.mimetype,
+          thumbnailUrl,
         });
         App.elements.push(data);
         Elements.renderElement(data);
@@ -108,6 +131,7 @@ const DragDrop = {
       Canvas.updateMinimap();
     } catch (err) {
       console.error('Upload failed:', err);
+      toast.done();
     }
   },
 };

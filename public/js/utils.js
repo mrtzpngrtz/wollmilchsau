@@ -44,12 +44,47 @@ const Utils = {
     };
   },
 
-  uploadFile: async (file) => {
+  uploadFile: (file, onProgress) => new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    return res.json();
-  },
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100));
+      });
+    }
+    xhr.addEventListener('load', () => {
+      try { resolve(JSON.parse(xhr.responseText)); }
+      catch { reject(new Error('Upload failed')); }
+    });
+    xhr.addEventListener('error', () => reject(new Error('Network error')));
+    xhr.open('POST', '/api/upload');
+    xhr.send(formData);
+  }),
+
+  extractVideoThumbnail: (file) => new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.crossOrigin = 'anonymous';
+    video.src = url;
+    video.addEventListener('loadeddata', () => { video.currentTime = 0.1; });
+    video.addEventListener('seeked', () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const MAX = 480;
+        const ratio = Math.min(MAX / video.videoWidth, MAX / video.videoHeight, 1);
+        canvas.width  = Math.round(video.videoWidth  * ratio);
+        canvas.height = Math.round(video.videoHeight * ratio);
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      } catch { URL.revokeObjectURL(url); resolve(null); }
+    });
+    video.addEventListener('error', () => { URL.revokeObjectURL(url); resolve(null); });
+  }),
 
   SVG_NS: 'http://www.w3.org/2000/svg',
 

@@ -164,8 +164,10 @@ const Elements = {
         inner.style.width = '100%';
         inner.style.height = '100%';
         inner.innerHTML = `
-          <div class="file-icon">${Utils.getFileIcon(data.mimetype, data.originalName)}</div>
-          <div class="file-name">${data.originalName}</div>
+          ${data.thumbnailUrl
+            ? `<img class="file-thumb" src="${data.thumbnailUrl}" alt="">`
+            : `<div class="file-icon">${Utils.getFileIcon(data.mimetype, data.originalName)}</div>`}
+          <div class="file-name">${Utils.escapeHtml(data.originalName)}</div>
           <div class="file-size">${Utils.formatFileSize(data.fileSize)}</div>
         `;
         el.appendChild(inner);

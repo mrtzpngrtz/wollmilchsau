@@ -68,6 +68,13 @@ const Storage = {
     return new Date(isoStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
   },
 
+  formatDateTime(isoStr) {
+    if (!isoStr) return '—';
+    const d = new Date(isoStr);
+    return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      + ', ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  },
+
   async refreshDropdownList() {
     const list = document.getElementById('board-dropdown-list');
     try {
@@ -482,7 +489,7 @@ const Storage = {
         meta.innerHTML = `
           <span>${board.elementCount || 0} elements</span>
           <span>edited ${this.formatTimeAgo(board.lastEdit)}</span>
-          ${board.created ? `<span>created ${this.formatTimeAgo(board.created)}</span>` : ''}
+          ${board.created ? `<span>created ${this.formatDateTime(board.created)}</span>` : ''}
         `;
 
         if (isShared) {

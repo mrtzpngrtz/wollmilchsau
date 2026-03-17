@@ -1245,6 +1245,60 @@ body.dark .board-dropdown-item .board-name {
   color: var(--white);
 }
 
+/* Dialog helpers */
+.dlg-msg {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--black);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.dlg-row {
+  display: flex;
+  gap: 8px;
+}
+.dlg-row .btn-primary {
+  flex: 1;
+  width: auto;
+}
+.dlg-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--off-white);
+  border: var(--border);
+  color: var(--black);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 10px;
+  margin-bottom: 14px;
+  outline: none;
+}
+.dlg-input:focus {
+  border-color: var(--accent);
+}
+.btn-dialog-cancel {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: var(--border);
+  color: var(--black);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.btn-dialog-cancel:hover {
+  background: var(--light-grey);
+}
+body.dark .dlg-msg { color: #E8E8E8; }
+body.dark .dlg-input { background: #222; border-color: #444; color: #E8E8E8; }
+body.dark .btn-dialog-cancel { color: #E8E8E8; border-color: #444; }
+body.dark .btn-dialog-cancel:hover { background: #2A2A2A; }
+
 .btn-primary {
   width: 100%;
   padding: 10px;

@@ -102,3 +102,72 @@ const Utils = {
     return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   },
 };
+
+/* === DIALOG (app-styled alert / confirm / prompt) === */
+const Dialog = {
+  _show(title, bodyHtml, onMount) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal';
+      overlay.style.cssText = 'display:flex;';
+      overlay.innerHTML = `
+        <div class="modal-content modal-sm">
+          <div class="modal-header">
+            <span class="modal-idx">●</span>
+            <span>${Utils.escapeHtml(title)}</span>
+          </div>
+          <div class="modal-body">${bodyHtml}</div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const done = (val) => { overlay.remove(); resolve(val); };
+      onMount(overlay, done);
+    });
+  },
+
+  alert(message, title = 'NOTICE') {
+    return this._show(title,
+      `<p class="dlg-msg">${Utils.escapeHtml(message)}</p>
+       <button class="btn-primary dlg-ok">OK</button>`,
+      (el, done) => {
+        el.querySelector('.dlg-ok').addEventListener('click', () => done());
+        el.querySelector('.dlg-ok').focus();
+      });
+  },
+
+  confirm(message, title = 'CONFIRM') {
+    return this._show(title,
+      `<p class="dlg-msg">${Utils.escapeHtml(message)}</p>
+       <div class="dlg-row">
+         <button class="btn-primary dlg-ok">OK</button>
+         <button class="btn-dialog-cancel dlg-cancel">CANCEL</button>
+       </div>`,
+      (el, done) => {
+        el.querySelector('.dlg-ok').addEventListener('click', () => done(true));
+        el.querySelector('.dlg-cancel').addEventListener('click', () => done(false));
+        el.addEventListener('click', e => { if (e.target === el) done(false); });
+        el.querySelector('.dlg-ok').focus();
+      });
+  },
+
+  prompt(message, defaultValue = '', title = 'INPUT') {
+    return this._show(title,
+      `<p class="dlg-msg">${Utils.escapeHtml(message)}</p>
+       <input type="text" class="dlg-input" value="${Utils.escapeAttr(defaultValue)}">
+       <div class="dlg-row">
+         <button class="btn-primary dlg-ok">OK</button>
+         <button class="btn-dialog-cancel dlg-cancel">CANCEL</button>
+       </div>`,
+      (el, done) => {
+        const input = el.querySelector('.dlg-input');
+        el.querySelector('.dlg-ok').addEventListener('click', () => done(input.value));
+        el.querySelector('.dlg-cancel').addEventListener('click', () => done(null));
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') done(input.value);
+          if (e.key === 'Escape') done(null);
+        });
+        el.addEventListener('click', e => { if (e.target === el) done(null); });
+        input.focus();
+        input.select();
+      });
+  },
+};

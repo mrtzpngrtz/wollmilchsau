@@ -122,9 +122,9 @@ const Storage = {
             this.renameBoard(board.name);
           });
 
-          deleteBtn.addEventListener('click', (e) => {
+          deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            if (confirm(`Delete board "${board.name}"?`)) this.deleteBoard(board.name);
+            if (await Dialog.confirm(`Delete board "${board.name}"?`)) this.deleteBoard(board.name);
           });
         }
 
@@ -148,7 +148,7 @@ const Storage = {
   },
 
   async renameBoard(oldName) {
-    const newName = prompt('Rename board:', oldName);
+    const newName = await Dialog.prompt('Rename board:', oldName, 'RENAME BOARD');
     if (!newName || !newName.trim() || newName.trim() === oldName) return;
 
     const cleanName = newName.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -167,7 +167,7 @@ const Storage = {
         this.refreshDropdownList();
         console.log(`Board renamed: "${oldName}" → "${cleanName}"`);
       } else {
-        alert(data.error || 'Rename failed');
+        await Dialog.alert(data.error || 'Rename failed', 'ERROR');
       }
     } catch (err) {
       console.error('Rename failed:', err);
@@ -175,7 +175,7 @@ const Storage = {
   },
 
   async createNewBoard() {
-    const name = prompt('Board name:');
+    const name = await Dialog.prompt('Board name:', '', 'NEW BOARD');
     if (!name || !name.trim()) return;
     const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
 

@@ -59,8 +59,23 @@ html, body {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  z-index: 1000;
+  z-index: 9500;
   user-select: none;
+}
+
+/* Dashboard mode: hide canvas-only controls */
+#topbar.topbar-dashboard .topbar-center,
+#topbar.topbar-dashboard #board-switcher,
+#topbar.topbar-dashboard .topbar-coord,
+#topbar.topbar-dashboard #collab-presence,
+#topbar.topbar-dashboard #collab-status-dot,
+#topbar.topbar-dashboard #btn-darkmode,
+#topbar.topbar-dashboard #btn-undo,
+#topbar.topbar-dashboard #btn-redo,
+#topbar.topbar-dashboard #btn-save,
+#topbar.topbar-dashboard #btn-load,
+#topbar.topbar-dashboard .topbar-separator {
+  display: none;
 }
 
 .topbar-left,

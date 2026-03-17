@@ -431,11 +431,13 @@ const Storage = {
   showDashboard() {
     const dash = document.getElementById('boards-dashboard');
     dash.classList.remove('hidden');
+    document.getElementById('topbar').classList.add('topbar-dashboard');
     this.refreshDashboard();
   },
 
   hideDashboard() {
     document.getElementById('boards-dashboard').classList.add('hidden');
+    document.getElementById('topbar').classList.remove('topbar-dashboard');
   },
 
   async refreshDashboard() {

@@ -4,6 +4,8 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const { WebSocketServer } = require('ws');
 
 const app = express();
 const PORT = 3000;
@@ -89,7 +91,7 @@ migrateOldBoards();
 // ═══════════════════════════════════════════════════════
 app.use(express.json({ limit: '50mb' }));
 
-app.use(session({
+const sessionMiddleware = session({
   secret: 'wollmilchsau-secret-' + (process.env.SESSION_SECRET || 'dev-2026'),
   resave: false,
   saveUninitialized: false,
@@ -98,7 +100,8 @@ app.use(session({
     httpOnly: true,
     sameSite: 'lax',
   },
-}));
+});
+app.use(sessionMiddleware);
 
 // Auth middleware
 function requireAuth(req, res, next) {
@@ -398,6 +401,46 @@ app.get('/api/boards', requireAuth, (req, res) => {
 
   boards.sort((a, b) => (b.lastEdit || '').localeCompare(a.lastEdit || ''));
   res.json(boards);
+});
+
+// Board thumbnail (own)
+app.get('/api/boards/:name/thumb', requireAuth, (req, res) => {
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  const filePath = path.join(getUserBoardDir(req.session.user.username), name + '.json');
+  if (!fs.existsSync(filePath)) return res.status(404).end();
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (!data.thumbnail) return res.status(404).end();
+    const base64 = data.thumbnail.replace(/^data:image\/\w+;base64,/, '');
+    res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'private, max-age=60');
+    res.send(Buffer.from(base64, 'base64'));
+  } catch (e) { res.status(500).end(); }
+});
+
+// Board thumbnail (shared)
+app.get('/api/boards/:owner/:name/thumb', requireAuth, (req, res) => {
+  const owner = req.params.owner.replace(/[^a-zA-Z0-9_-]/g, '');
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  const username = req.session.user.username;
+
+  const boardPath = owner === username
+    ? path.join(getUserBoardDir(username), name + '.json')
+    : path.join(__dirname, 'data', 'boards', owner, name + '.json');
+
+  if (!fs.existsSync(boardPath)) return res.status(404).end();
+  try {
+    const data = JSON.parse(fs.readFileSync(boardPath, 'utf8'));
+    if (owner !== username) {
+      const collabs = data.meta?.collaborators || [];
+      if (!collabs.includes(username) && req.session.user.role !== 'admin') return res.status(403).end();
+    }
+    if (!data.thumbnail) return res.status(404).end();
+    const base64 = data.thumbnail.replace(/^data:image\/\w+;base64,/, '');
+    res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'private, max-age=60');
+    res.send(Buffer.from(base64, 'base64'));
+  } catch (e) { res.status(500).end(); }
 });
 
 // Load shared board
@@ -845,9 +888,132 @@ app.delete('/api/admin/suggestions/:index', requireAdmin, (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════
+//  WEBSOCKET — Real-Time Collaboration
+// ═══════════════════════════════════════════════════════
+const server = http.createServer(app);
+const wss = new WebSocketServer({ noServer: true });
+
+// Authenticate WebSocket upgrades using the same session middleware
+server.on('upgrade', (req, socket, head) => {
+  sessionMiddleware(req, {}, () => {
+    if (!req.session?.user) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.user = req.session.user;
+      wss.emit('connection', ws, req);
+    });
+  });
+});
+
+const rooms = new Map(); // roomKey ("owner/board") → Set<ws>
+
+function getUserColor(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  return `hsl(${Math.abs(hash) % 360},65%,50%)`;
+}
+
+function broadcastPresence(room) {
+  const clients = rooms.get(room);
+  if (!clients) return;
+  const users = [...clients].map(c => ({
+    username: c.user.username,
+    displayName: c.user.displayName,
+    color: getUserColor(c.user.username),
+  }));
+  const msg = JSON.stringify({ type: 'presence', users });
+  clients.forEach(c => { if (c.readyState === 1) c.send(msg); });
+}
+
+function broadcastToRoom(room, senderWs, payload) {
+  const clients = rooms.get(room);
+  if (!clients) return;
+  const str = JSON.stringify(payload);
+  clients.forEach(c => { if (c !== senderWs && c.readyState === 1) c.send(str); });
+}
+
+function leaveRoom(ws) {
+  if (!ws.currentRoom) return;
+  const room = ws.currentRoom;
+  const clients = rooms.get(room);
+  if (clients) { clients.delete(ws); if (clients.size === 0) rooms.delete(room); }
+  ws.currentRoom = null;
+  broadcastPresence(room);
+}
+
+wss.on('connection', (ws) => {
+  ws.currentRoom = null;
+
+  ws.on('message', (raw) => {
+    let msg;
+    try { msg = JSON.parse(raw); } catch { return; }
+
+    if (msg.type === 'join') {
+      const parts = (msg.room || '').split('/');
+      const cleanOwner = (parts[0] || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      const cleanBoard = (parts[1] || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      if (!cleanOwner || !cleanBoard) return;
+
+      const username = ws.user.username;
+      const isOwner = cleanOwner === username;
+      const isAdmin = ws.user.role === 'admin';
+
+      if (!isOwner && !isAdmin) {
+        const boardPath = path.join(__dirname, 'data', 'boards', cleanOwner, cleanBoard + '.json');
+        if (!fs.existsSync(boardPath)) return;
+        try {
+          const data = JSON.parse(fs.readFileSync(boardPath, 'utf8'));
+          if (!(data.meta?.collaborators || []).includes(username)) return;
+        } catch { return; }
+      }
+
+      const room = `${cleanOwner}/${cleanBoard}`;
+      if (ws.currentRoom && ws.currentRoom !== room) {
+        const prev = rooms.get(ws.currentRoom);
+        if (prev) { prev.delete(ws); if (prev.size === 0) rooms.delete(ws.currentRoom); }
+        broadcastPresence(ws.currentRoom);
+      }
+      if (!rooms.has(room)) rooms.set(room, new Set());
+      rooms.get(room).add(ws);
+      ws.currentRoom = room;
+      broadcastPresence(room);
+    }
+
+    if (msg.type === 'state' && ws.currentRoom) {
+      broadcastToRoom(ws.currentRoom, ws, {
+        type: 'state',
+        from: ws.user.username,
+        displayName: ws.user.displayName,
+        elements: msg.elements,
+        connections: msg.connections,
+        seq: msg.seq,
+      });
+    }
+
+    if (msg.type === 'cursor' && ws.currentRoom) {
+      broadcastToRoom(ws.currentRoom, ws, {
+        type: 'cursor',
+        from: ws.user.username,
+        displayName: ws.user.displayName,
+        x: msg.x,
+        y: msg.y,
+      });
+    }
+
+    if (msg.type === 'leave') leaveRoom(ws);
+  });
+
+  ws.on('close', () => leaveRoom(ws));
+  ws.on('error', () => leaveRoom(ws));
+});
+
+// ═══════════════════════════════════════════════════════
 //  START
 // ═══════════════════════════════════════════════════════
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`WOLLMILCHSAU running at http://localhost:${PORT}`);
   console.log('Default login: admin / admin');
 });

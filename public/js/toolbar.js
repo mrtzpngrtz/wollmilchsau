@@ -62,6 +62,7 @@ const Toolbar = {
           case 'v': App.setTool('select'); break;
           case 'h': App.setTool('pan'); break;
           case 't': App.setTool('text'); break;
+          case 'e': App.setTool('heading'); break;
           case 'n': App.setTool('note'); break;
           case 'i': App.setTool('image'); break;
           case 'f': App.setTool('file'); break;
@@ -70,6 +71,7 @@ const Toolbar = {
           case 'a': App.setTool('arrow'); break;
           case 'g': App.setTool('icon'); break;
           case 'd': App.setTool('todo'); break;
+          case 'p': App.setTool('draw'); break;
           case 'delete':
           case 'backspace':
             Elements.deleteSelected();

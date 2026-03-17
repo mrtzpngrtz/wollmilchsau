@@ -133,6 +133,7 @@ const Storage = {
         // Click to switch
         left.addEventListener('click', (e) => {
           e.stopPropagation();
+          Collab.leaveBoard();
           if (App.elements.length > 0) this.save(this.currentBoard);
           this.load(board.name, isShared ? board.owner : null);
           this.closeDropdown();
@@ -177,6 +178,7 @@ const Storage = {
     if (!name || !name.trim()) return;
     const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
 
+    Collab.leaveBoard();
     if (App.elements.length > 0) await this.save(this.currentBoard);
 
     App.elements = [];
@@ -240,13 +242,114 @@ const Storage = {
     return `/api/boards/${encodeURIComponent(name)}`;
   },
 
+  generateThumbnail() {
+    const elements = App.elements;
+    if (elements.length === 0) return null;
+
+    const W = 320, H = 200;
+    const offscreen = document.createElement('canvas');
+    offscreen.width = W;
+    offscreen.height = H;
+    const ctx = offscreen.getContext('2d');
+    const isDark = document.body.classList.contains('dark');
+
+    ctx.fillStyle = isDark ? '#1A1A1A' : '#F2F2F2';
+    ctx.fillRect(0, 0, W, H);
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    elements.forEach(el => {
+      minX = Math.min(minX, el.x);
+      minY = Math.min(minY, el.y);
+      maxX = Math.max(maxX, el.x + (el.width || 100));
+      maxY = Math.max(maxY, el.y + (el.height || 60));
+    });
+
+    const pad = 40;
+    minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+    const cw = maxX - minX, ch = maxY - minY;
+    const scale = Math.min(W / cw, H / ch);
+    const offsetX = (W - cw * scale) / 2;
+    const offsetY = (H - ch * scale) / 2;
+
+    const NOTE_COLORS = { blue: '#0066FF', green: '#00AA44', pink: '#FF0066', purple: '#7700FF', orange: '#FF4500' };
+
+    elements.forEach(el => {
+      const ex = (el.x - minX) * scale + offsetX;
+      const ey = (el.y - minY) * scale + offsetY;
+      const ew = Math.max((el.width || 100) * scale, 2);
+      const eh = Math.max((el.height || 60) * scale, 2);
+      ctx.save();
+
+      if (el.type === 'note') {
+        ctx.fillStyle = isDark ? '#2A2A2A' : '#FFFEF0';
+        ctx.fillRect(ex, ey, ew, eh);
+        const accent = NOTE_COLORS[el.noteColor] || (isDark ? '#555' : '#CCC');
+        ctx.fillStyle = accent;
+        ctx.fillRect(ex, ey, Math.max(2, 3 * scale), eh);
+      } else if (el.type === 'image') {
+        ctx.fillStyle = isDark ? '#333' : '#DDD';
+        ctx.fillRect(ex, ey, ew, eh);
+        ctx.strokeStyle = isDark ? '#444' : '#BBB';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(ex, ey, ew, eh);
+        // small photo icon lines
+        if (ew > 8 && eh > 6) {
+          ctx.strokeStyle = isDark ? '#555' : '#AAA';
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          const mx = ex + ew * 0.5, my = ey + eh * 0.6;
+          ctx.moveTo(ex + ew * 0.15, ey + eh * 0.75);
+          ctx.lineTo(mx - ew * 0.15, my - eh * 0.2);
+          ctx.lineTo(mx + ew * 0.15, my);
+          ctx.lineTo(ex + ew * 0.85, ey + eh * 0.55);
+          ctx.stroke();
+        }
+      } else if (el.type === 'rect') {
+        ctx.fillStyle = el.fillColor && el.fillColor !== 'transparent' ? el.fillColor : (isDark ? '#2A2A2A' : '#E8E8E8');
+        ctx.fillRect(ex, ey, ew, eh);
+        ctx.strokeStyle = el.borderColor || (isDark ? '#666' : '#444');
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(ex, ey, ew, eh);
+      } else if (el.type === 'circle') {
+        ctx.fillStyle = el.fillColor && el.fillColor !== 'transparent' ? el.fillColor : (isDark ? '#2A2A2A' : '#E8E8E8');
+        ctx.strokeStyle = el.borderColor || (isDark ? '#666' : '#444');
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.ellipse(ex + ew / 2, ey + eh / 2, ew / 2, eh / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else if (el.type === 'text') {
+        ctx.fillStyle = isDark ? '#CCC' : '#333';
+        const fs = Math.max(5, Math.min(9, eh * 0.7));
+        ctx.font = `${fs}px sans-serif`;
+        ctx.fillText((el.content || '').slice(0, 30), ex, ey + fs);
+      } else if (el.type === 'icon') {
+        ctx.font = `${Math.max(8, Math.min(eh, ew) * 0.8)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(el.content || '●', ex + ew / 2, ey + eh / 2);
+      } else {
+        ctx.fillStyle = isDark ? '#2A2A2A' : '#E0E0E0';
+        ctx.fillRect(ex, ey, ew, eh);
+        ctx.strokeStyle = isDark ? '#444' : '#CCC';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(ex, ey, ew, eh);
+      }
+      ctx.restore();
+    });
+
+    return offscreen.toDataURL('image/jpeg', 0.75);
+  },
+
   async save(name) {
     this.currentBoard = name;
     this.updateBoardName();
+    const thumbnail = this.generateThumbnail();
     const data = {
       elements: App.elements,
       connections: App.connections,
       viewport: { panX: Canvas.panX, panY: Canvas.panY, zoom: Canvas.zoom },
+      ...(thumbnail ? { thumbnail } : {}),
     };
     try {
       const url = this.getBoardApiPath(name, this.currentBoardOwner);
@@ -287,6 +390,7 @@ const Storage = {
       Canvas.updateMinimap();
       History.clear();
       History.push({ elements: App.elements, connections: App.connections });
+      Collab.joinBoard(name, owner || null);
 
       console.log(`Board "${name}" loaded${owner ? ` (shared by ${owner})` : ''}`);
     } catch (err) {
@@ -350,6 +454,22 @@ const Storage = {
         const card = document.createElement('div');
         card.className = 'dash-card';
 
+        // Thumbnail
+        const thumbUrl = isShared
+          ? `/api/boards/${encodeURIComponent(board.owner)}/${encodeURIComponent(board.name)}/thumb`
+          : `/api/boards/${encodeURIComponent(board.name)}/thumb`;
+        const thumb = document.createElement('div');
+        thumb.className = 'dash-card-thumb';
+        const img = document.createElement('img');
+        img.src = thumbUrl;
+        img.alt = '';
+        img.onerror = () => { thumb.classList.add('no-thumb'); };
+        thumb.appendChild(img);
+        card.appendChild(thumb);
+
+        const body = document.createElement('div');
+        body.className = 'dash-card-body';
+
         const name = document.createElement('div');
         name.className = 'dash-card-name';
         name.textContent = board.name;
@@ -366,8 +486,12 @@ const Storage = {
           const badge = document.createElement('div');
           badge.className = 'dash-card-badge';
           badge.textContent = `SHARED BY ${board.owner.toUpperCase()}`;
-          card.appendChild(badge);
+          body.appendChild(badge);
         }
+
+        body.appendChild(name);
+        body.appendChild(meta);
+        card.appendChild(body);
 
         const actions = document.createElement('div');
         actions.className = 'dash-card-actions';
@@ -397,8 +521,6 @@ const Storage = {
           actions.appendChild(deleteBtn);
         }
 
-        card.appendChild(name);
-        card.appendChild(meta);
         card.appendChild(actions);
 
         card.addEventListener('click', () => {
@@ -426,7 +548,8 @@ const Storage = {
       const name = prompt('Board name:');
       if (!name || !name.trim()) return;
       const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-      
+
+      Collab.leaveBoard();
       App.elements = [];
       App.connections = [];
       this.currentBoard = cleanName;

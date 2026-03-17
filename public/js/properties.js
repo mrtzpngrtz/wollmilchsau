@@ -28,7 +28,7 @@ const Properties = {
       </div>
     `;
 
-    if (data.type === 'text') {
+    if (data.type === 'text' || data.type === 'heading') {
       html += `
         <div class="prop-group">
           <div class="prop-label">02 — SIZE</div>
@@ -87,6 +87,15 @@ const Properties = {
             <span class="prop-slider-label">%</span>
             <input class="prop-slider" type="range" data-prop="scale" value="100" min="10" max="300" />
             <span class="prop-slider-value" data-display="scale">100</span>
+          </div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-label">03 — ZOOM</div>
+          <div class="prop-slider-row">
+            <span class="prop-slider-label">⌖</span>
+            <input class="prop-slider" type="range" data-prop="imageZoom"
+                   value="${data.imageZoom || 100}" min="100" max="300" step="1" />
+            <span class="prop-slider-value" data-display="imageZoom">${data.imageZoom || 100}</span>
           </div>
         </div>
       `;

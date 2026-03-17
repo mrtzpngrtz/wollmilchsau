@@ -133,6 +133,7 @@ const Canvas = {
   updateTransform() {
     this.canvasEl.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.zoom})`;
     document.getElementById('zoom-level').textContent = Math.round(this.zoom * 100);
+    if (typeof Collab !== 'undefined') Collab._repositionAllCursors();
   },
 
   screenToCanvas(sx, sy) {

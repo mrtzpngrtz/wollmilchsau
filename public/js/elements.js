@@ -33,6 +33,12 @@ const Elements = {
         defaults.content = extra.content || 'Double-click to edit';
         defaults.fontSize = 14;
         break;
+      case 'heading':
+        defaults.width = 500;
+        defaults.height = 70;
+        defaults.content = extra.content || 'Headline';
+        defaults.fontSize = 50;
+        break;
       case 'note':
         defaults.width = 220;
         defaults.height = 160;
@@ -44,6 +50,7 @@ const Elements = {
         defaults.height = extra.height || 200;
         defaults.url = extra.url || '';
         defaults.originalName = extra.originalName || '';
+        defaults.imageZoom = extra.imageZoom || 100;
         break;
       case 'file':
         defaults.width = 160;
@@ -74,6 +81,13 @@ const Elements = {
         defaults.title = extra.title || 'Tasks';
         defaults.items = extra.items || [];
         break;
+      case 'draw':
+        defaults.points = extra.points || [];
+        defaults.strokeColor = extra.strokeColor || (document.body.classList.contains('dark') ? '#E0E0E0' : '#111111');
+        defaults.strokeWidth = extra.strokeWidth || 2;
+        defaults.width = extra.width || 100;
+        defaults.height = extra.height || 100;
+        break;
     }
 
     return defaults;
@@ -86,7 +100,7 @@ const Elements = {
     el.style.left = data.x + 'px';
     el.style.top = data.y + 'px';
     el.style.width = data.width + 'px';
-    el.style.height = (data.type === 'text') ? 'auto' : data.height + 'px';
+    el.style.height = (data.type === 'text' || data.type === 'heading') ? 'auto' : data.height + 'px';
     el.style.zIndex = data.zIndex;
 
     if (data.locked) el.classList.add('locked');
@@ -98,6 +112,15 @@ const Elements = {
         inner.className = 'el-text';
         inner.textContent = data.content;
         inner.style.fontSize = (data.fontSize || 14) + 'px';
+        inner.style.color = data.color || '#111111';
+        el.appendChild(inner);
+        break;
+
+      case 'heading':
+        inner = document.createElement('div');
+        inner.className = 'el-heading';
+        inner.textContent = data.content;
+        inner.style.fontSize = (data.fontSize || 50) + 'px';
         inner.style.color = data.color || '#111111';
         el.appendChild(inner);
         break;
@@ -124,6 +147,8 @@ const Elements = {
           img.src = data.url;
           img.alt = data.originalName || '';
           img.draggable = false;
+          img.style.transform = `scale(${(data.imageZoom || 100) / 100})`;
+          img.style.transformOrigin = 'center center';
           inner.appendChild(img);
         }
         el.appendChild(inner);
@@ -180,6 +205,28 @@ const Elements = {
         el.appendChild(inner);
         // Bind todo-specific events after appending to DOM
         setTimeout(() => Todos.bindEvents(el, data), 0);
+        break;
+
+      case 'draw':
+        inner = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        inner.setAttribute('class', 'el-draw');
+        inner.setAttribute('width', data.width);
+        inner.setAttribute('height', data.height);
+        inner.setAttribute('viewBox', `0 0 ${data.width} ${data.height}`);
+        inner.style.width = '100%';
+        inner.style.height = '100%';
+        if (data.points && data.points.length > 1) {
+          const pathD = data.points.map((p, i) => (i === 0 ? `M${p.x} ${p.y}` : `L${p.x} ${p.y}`)).join(' ');
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', pathD);
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke', data.strokeColor || '#111111');
+          path.setAttribute('stroke-width', data.strokeWidth || 2);
+          path.setAttribute('stroke-linecap', 'round');
+          path.setAttribute('stroke-linejoin', 'round');
+          inner.appendChild(path);
+        }
+        el.appendChild(inner);
         break;
     }
 
@@ -340,7 +387,7 @@ const Elements = {
     if (props.x !== undefined) dom.style.left = props.x + 'px';
     if (props.y !== undefined) dom.style.top = props.y + 'px';
     if (props.width !== undefined) dom.style.width = props.width + 'px';
-    if (props.height !== undefined && data.type !== 'text') dom.style.height = props.height + 'px';
+    if (props.height !== undefined && data.type !== 'text' && data.type !== 'heading') dom.style.height = props.height + 'px';
     if (props.zIndex !== undefined) dom.style.zIndex = props.zIndex;
 
     if (data.type === 'text') {
@@ -348,6 +395,12 @@ const Elements = {
       if (props.content !== undefined) textEl.textContent = props.content;
       if (props.fontSize !== undefined) textEl.style.fontSize = props.fontSize + 'px';
       if (props.color !== undefined) textEl.style.color = props.color;
+    }
+    if (data.type === 'heading') {
+      const headingEl = dom.querySelector('.el-heading');
+      if (props.content !== undefined) headingEl.textContent = props.content;
+      if (props.fontSize !== undefined) headingEl.style.fontSize = props.fontSize + 'px';
+      if (props.color !== undefined) headingEl.style.color = props.color;
     }
     if (data.type === 'note') {
       const noteEl = dom.querySelector('.el-note');
@@ -370,6 +423,12 @@ const Elements = {
     if (data.type === 'icon' && props.icon !== undefined) {
       dom.querySelector('.el-icon').textContent = props.icon;
     }
+    if (data.type === 'image') {
+      const imgEl = dom.querySelector('.el-image img');
+      if (imgEl && props.imageZoom !== undefined) {
+        imgEl.style.transform = `scale(${props.imageZoom / 100})`;
+      }
+    }
     if (data.type === 'todo') {
       if (props.title !== undefined) {
         Todos.refresh(dom, data);
@@ -383,6 +442,7 @@ const Elements = {
     let marqueeActive = false;
     let drawingShape = null;
     let drawingStart = null;
+    let drawingPath = null; // freehand draw
 
     container.addEventListener('mousedown', (e) => {
       if (Canvas.isPanning || Canvas.spaceDown) return;
@@ -465,6 +525,17 @@ const Elements = {
         return;
       }
 
+      if (tool === 'heading') {
+        const data = this.create('heading', canvasPos.x, canvasPos.y);
+        App.elements.push(data);
+        this.renderElement(data);
+        this.select(data.id);
+        setTimeout(() => this.startEditing(data.id), 50);
+        App.setTool('select');
+        App.saveState();
+        return;
+      }
+
       if (tool === 'icon') {
         IconPicker.show(canvasPos.x, canvasPos.y);
         return;
@@ -492,6 +563,28 @@ const Elements = {
         App.setTool('select');
         App.saveState();
         Canvas.updateMinimap();
+        return;
+      }
+
+      if (tool === 'draw') {
+        drawingPath = { points: [canvasPos], startPos: canvasPos };
+        // Create a temporary SVG overlay for live preview
+        let preview = document.getElementById('draw-preview');
+        if (!preview) {
+          preview = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          preview.id = 'draw-preview';
+          preview.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;overflow:visible;';
+          Canvas.canvasEl.appendChild(preview);
+        }
+        preview.innerHTML = '';
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const isDark = document.body.classList.contains('dark');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', isDark ? '#E0E0E0' : '#111111');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        preview.appendChild(path);
         return;
       }
 
@@ -552,6 +645,21 @@ const Elements = {
         return;
       }
 
+      // Freehand draw live preview
+      if (drawingPath) {
+        const pos = Canvas.screenToCanvas(e.clientX, e.clientY);
+        drawingPath.points.push(pos);
+        const preview = document.getElementById('draw-preview');
+        if (preview) {
+          const path = preview.querySelector('path');
+          if (path) {
+            const d = drawingPath.points.map((p, i) => (i === 0 ? `M${p.x} ${p.y}` : `L${p.x} ${p.y}`)).join(' ');
+            path.setAttribute('d', d);
+          }
+        }
+        return;
+      }
+
       if (drawingShape && drawingStart) {
         const pos = Canvas.screenToCanvas(e.clientX, e.clientY);
         drawingShape.width = Math.abs(pos.x - drawingStart.x);
@@ -596,6 +704,43 @@ const Elements = {
         marqueeStart = null;
       }
 
+      // Finalize freehand drawing
+      if (drawingPath) {
+        const pts = drawingPath.points;
+        // Remove preview
+        const preview = document.getElementById('draw-preview');
+        if (preview) preview.innerHTML = '';
+
+        if (pts.length > 2) {
+          // Calculate bounding box
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          pts.forEach(p => {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+          });
+          const pad = 4;
+          minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+          const w = maxX - minX;
+          const h = maxY - minY;
+          // Normalize points relative to origin
+          const normalized = pts.map(p => ({ x: p.x - minX, y: p.y - minY }));
+          const data = this.create('draw', minX, minY, {
+            points: normalized,
+            width: Math.max(w, 10),
+            height: Math.max(h, 10),
+          });
+          App.elements.push(data);
+          this.renderElement(data);
+          this.select(data.id);
+          App.saveState();
+          Canvas.updateMinimap();
+        }
+        drawingPath = null;
+        // Stay in draw tool for continuous drawing
+      }
+
       if (drawingShape && drawingStart) {
         if (drawingShape.width > 10 || drawingShape.height > 10) {
           const data = this.create(drawingShape.type, drawingShape.x, drawingShape.y, {
@@ -620,7 +765,7 @@ const Elements = {
       const data = this.getData(elementDom.dataset.id);
       if (!data || data.locked) return;
 
-      if (data.type === 'text' || data.type === 'note') {
+      if (data.type === 'text' || data.type === 'note' || data.type === 'heading') {
         this.startEditing(data.id);
       }
       if (data.type === 'file' && data.url) {
@@ -647,7 +792,7 @@ const Elements = {
     const data = this.getData(id);
     if (!dom || !data) return;
 
-    const editable = dom.querySelector('.el-text, .el-note');
+    const editable = dom.querySelector('.el-text, .el-note, .el-heading');
     if (!editable) return;
 
     editable.setAttribute('contenteditable', 'true');
@@ -662,7 +807,7 @@ const Elements = {
     const stopEditing = () => {
       editable.removeAttribute('contenteditable');
       data.content = editable.textContent;
-      if (data.type === 'text') {
+      if (data.type === 'text' || data.type === 'heading') {
         data.height = editable.offsetHeight;
       }
       App.saveState();

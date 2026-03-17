@@ -96,7 +96,7 @@ const Suggestions = {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
           const idx = parseInt(btn.dataset.idx);
-          if (!confirm('Delete this suggestion?')) return;
+          if (!await Dialog.confirm('Delete this suggestion?')) return;
           try {
             await fetch(`/api/suggestions/${idx}`, { method: 'DELETE' });
             this.load();

@@ -521,10 +521,11 @@ const Storage = {
           deleteBtn.className = 'dash-card-action danger';
           deleteBtn.textContent = '✕';
           deleteBtn.title = 'Delete';
-          deleteBtn.addEventListener('click', (e) => {
+          deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            if (confirm(`Delete board "${board.name}"?`)) {
-              this.deleteBoardOnly(board.name).then(() => this.refreshDashboard());
+            if (await Dialog.confirm(`Delete board "${board.name}"?`)) {
+              await this.deleteBoardOnly(board.name);
+              this.refreshDashboard();
             }
           });
 
@@ -564,8 +565,8 @@ const Storage = {
       }
     });
 
-    document.getElementById('dashboard-new-board').addEventListener('click', () => {
-      const name = prompt('Board name:');
+    document.getElementById('dashboard-new-board').addEventListener('click', async () => {
+      const name = await Dialog.prompt('Board name:', '', 'NEW BOARD');
       if (!name || !name.trim()) return;
       const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
 
@@ -656,12 +657,12 @@ const Storage = {
       data = JSON.parse(await file.text());
       if (!Array.isArray(data.elements)) throw new Error('Missing elements array');
     } catch (err) {
-      alert('Invalid board file: ' + err.message);
+      await Dialog.alert('Invalid board file: ' + err.message, 'ERROR');
       return;
     }
 
     const defaultName = file.name.replace(/\.json$/i, '').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const name = prompt('Import as board name:', defaultName);
+    const name = await Dialog.prompt('Import as board name:', defaultName, 'IMPORT BOARD');
     if (!name || !name.trim()) return;
     const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
 

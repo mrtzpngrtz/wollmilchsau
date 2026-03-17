@@ -18,6 +18,7 @@ const App = {
     Storage.init();
     DragDrop.init();
     IconPicker.init();
+    FileViewer.init();
     Suggestions.init();
 
     // Push initial empty state

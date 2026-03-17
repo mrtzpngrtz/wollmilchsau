@@ -792,7 +792,7 @@ const Elements = {
         this.startEditing(data.id);
       }
       if (data.type === 'file' && data.url) {
-        window.open(data.url, '_blank');
+        FileViewer.open(data);
       }
       // todo double-click is handled by Todos.bindEvents
     });

@@ -163,6 +163,22 @@
     <div id="props-content"></div>
   </div>
 
+  <!-- File Viewer Modal -->
+  <div id="file-viewer" class="modal hidden">
+    <div class="modal-content file-viewer-content">
+      <div class="modal-header">
+        <span class="modal-idx">◻</span>
+        <span id="file-viewer-title" class="file-viewer-title"></span>
+        <div class="file-viewer-actions">
+          <a id="file-viewer-download" class="topbar-btn" download title="Download file">↓ DOWNLOAD</a>
+          <a id="file-viewer-open" class="topbar-btn" target="_blank" title="Open in new tab">↗ VIEW</a>
+          <button class="modal-close" id="file-viewer-close">✕</button>
+        </div>
+      </div>
+      <div class="file-viewer-body" id="file-viewer-body"></div>
+    </div>
+  </div>
+
   <!-- Icon Picker Modal -->
   <div id="icon-picker" class="modal hidden">
     <div class="modal-content">
@@ -296,6 +312,7 @@
   <script src="/js/storage.js"></script>
   <script src="/js/dragdrop.js"></script>
   <script src="/js/iconpicker.js"></script>
+  <script src="/js/viewer.js"></script>
   <script src="/js/suggestions.js"></script>
   <script src="/js/collab.js"></script>
   <script src="/js/app.js"></script>

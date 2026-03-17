@@ -581,27 +581,73 @@ const Storage = {
     });
   },
 
-  downloadBoard() {
-    const data = {
-      elements: App.elements,
-      connections: App.connections,
-      viewport: { panX: Canvas.panX, panY: Canvas.panY, zoom: Canvas.zoom },
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${this.currentBoard}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async downloadBoard() {
+    const btn = document.getElementById('btn-download-board');
+    btn.textContent = '…';
+    btn.disabled = true;
+    try {
+      const elements = JSON.parse(JSON.stringify(App.elements));
+
+      // Embed all server-hosted files as base64 data URLs
+      await Promise.all(elements.map(async el => {
+        if ((el.type === 'image' || el.type === 'file') && el.url && el.url.startsWith('/uploads/')) {
+          try {
+            const res = await fetch(el.url);
+            const blob = await res.blob();
+            el._embedded = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          } catch (err) {
+            console.warn('Could not embed file:', el.url, err);
+          }
+        }
+      }));
+
+      const data = {
+        elements,
+        connections: App.connections,
+        viewport: { panX: Canvas.panX, panY: Canvas.panY, zoom: Canvas.zoom },
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.currentBoard}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      btn.textContent = '↓ JSON';
+      btn.disabled = false;
+    }
   },
 
   uploadBoard(file) {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target.result);
         if (!Array.isArray(data.elements)) throw new Error('Invalid board file');
+
+        // Re-upload any embedded files to this server
+        await Promise.all(data.elements.map(async el => {
+          if (el._embedded) {
+            try {
+              const res = await fetch(el._embedded);
+              const blob = await res.blob();
+              const formData = new FormData();
+              formData.append('file', blob, el.originalName || `file_${el.id}`);
+              const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+              const uploadData = await uploadRes.json();
+              if (uploadData.url) el.url = uploadData.url;
+            } catch (err) {
+              console.warn('Could not re-upload embedded file:', err);
+            }
+            delete el._embedded;
+          }
+        }));
 
         App.elements = data.elements;
         App.connections = data.connections || [];

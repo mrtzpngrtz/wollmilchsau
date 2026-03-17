@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(grep -n \"user-display-name\\\\|btn-logout\\\\|user-name\\\\|user-info\" /d/xampp/htdocs/2026_03_wollmilchsau/public/js/*.js)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(ls -la /d/xampp/htdocs/2026_03_wollmilchsau/public/*.html)"
     ]
   }
 }

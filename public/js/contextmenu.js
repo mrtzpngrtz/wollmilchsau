@@ -29,6 +29,8 @@ const ContextMenu = {
           case 'bring-front': Elements.bringToFront(); break;
           case 'send-back': Elements.sendToBack(); break;
           case 'lock': Elements.toggleLock(); break;
+          case 'group': Elements.group(); break;
+          case 'ungroup': Elements.ungroup(); break;
           case 'delete': Elements.deleteSelected(); break;
         }
         this.hide();

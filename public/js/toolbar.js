@@ -69,7 +69,7 @@ const Toolbar = {
           case 'r': App.setTool('rect'); break;
           case 'c': App.setTool('circle'); break;
           case 'a': App.setTool('arrow'); break;
-          case 'g': App.setTool('icon'); break;
+          case 'g': App.setTool('icon'); break;  // Note: Ctrl+G is group (handled below)
           case 'd': App.setTool('todo'); break;
           case 'p': App.setTool('draw'); break;
           case 'k': App.setTool('pin'); break;
@@ -118,6 +118,10 @@ const Toolbar = {
           case 'a':
             e.preventDefault();
             App.elements.forEach(el => Elements.select(el.id, true));
+            break;
+          case 'g':
+            e.preventDefault();
+            if (e.shiftKey) { Elements.ungroup(); } else { Elements.group(); }
             break;
           case '=':
           case '+':

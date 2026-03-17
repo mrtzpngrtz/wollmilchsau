@@ -101,6 +101,7 @@ const Elements = {
     const el = document.createElement('div');
     el.className = 'canvas-element';
     el.dataset.id = data.id;
+    if (data.groupId) el.dataset.groupId = data.groupId;
     el.style.left = data.x + 'px';
     el.style.top = data.y + 'px';
     el.style.width = data.width + 'px';
@@ -330,10 +331,15 @@ const Elements = {
 
   duplicateSelected() {
     const newIds = [];
+    const groupMap = {};
     this.selected.forEach(id => {
       const data = this.getData(id);
       if (!data) return;
       const clone = { ...JSON.parse(JSON.stringify(data)), id: Utils.id(), x: data.x + 20, y: data.y + 20, zIndex: ++this.maxZIndex };
+      if (clone.groupId) {
+        if (!groupMap[clone.groupId]) groupMap[clone.groupId] = Utils.id();
+        clone.groupId = groupMap[clone.groupId];
+      }
       App.elements.push(clone);
       this.renderElement(clone);
       newIds.push(clone.id);
@@ -351,8 +357,13 @@ const Elements = {
   paste() {
     if (this.clipboard.length === 0) return;
     const newIds = [];
+    const groupMap = {};
     this.clipboard.forEach(data => {
       const clone = { ...data, id: Utils.id(), x: data.x + 40, y: data.y + 40, zIndex: ++this.maxZIndex };
+      if (clone.groupId) {
+        if (!groupMap[clone.groupId]) groupMap[clone.groupId] = Utils.id();
+        clone.groupId = groupMap[clone.groupId];
+      }
       App.elements.push(clone);
       this.renderElement(clone);
       newIds.push(clone.id);
@@ -394,6 +405,34 @@ const Elements = {
         data.locked = !data.locked;
         const dom = this.getDom(id);
         if (dom) dom.classList.toggle('locked', data.locked);
+      }
+    });
+    App.saveState();
+  },
+
+  group() {
+    if (this.selected.length < 2) return;
+    const groupId = Utils.id();
+    this.selected.forEach(id => {
+      const data = this.getData(id);
+      if (data) {
+        data.groupId = groupId;
+        const dom = this.getDom(id);
+        if (dom) dom.dataset.groupId = groupId;
+      }
+    });
+    App.saveState();
+  },
+
+  ungroup() {
+    if (this.selected.length === 0) return;
+    const groupIds = new Set(this.selected.map(id => this.getData(id)?.groupId).filter(Boolean));
+    if (groupIds.size === 0) return;
+    App.elements.forEach(el => {
+      if (el.groupId && groupIds.has(el.groupId)) {
+        delete el.groupId;
+        const dom = this.getDom(el.id);
+        if (dom) delete dom.dataset.groupId;
       }
     });
     App.saveState();
@@ -513,6 +552,10 @@ const Elements = {
 
           if (e.shiftKey) {
             this.select(id, true);
+          } else if (data.groupId && !this.selected.includes(id)) {
+            // Auto-select all group members
+            this.clearSelection();
+            App.elements.filter(el => el.groupId === data.groupId).forEach(el => this.select(el.id, true));
           } else if (!this.selected.includes(id)) {
             this.select(id);
           }

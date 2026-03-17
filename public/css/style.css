@@ -696,6 +696,15 @@ body.dark .board-dropdown-item .board-name {
   outline-color: var(--black);
 }
 
+.canvas-element[data-group-id] {
+  outline: 1px dashed rgba(99, 102, 241, 0.35);
+}
+
+.canvas-element[data-group-id].selected {
+  outline-color: var(--black);
+  outline-style: solid;
+}
+
 .canvas-element.locked {
   cursor: default;
   opacity: 0.5;
@@ -2642,6 +2651,15 @@ body.dark .el-heading {
 
 body.dark .canvas-element.selected {
   outline-color: #E8E8E8;
+}
+
+body.dark .canvas-element[data-group-id] {
+  outline: 1px dashed rgba(167, 169, 255, 0.4);
+}
+
+body.dark .canvas-element[data-group-id].selected {
+  outline-color: #E8E8E8;
+  outline-style: solid;
 }
 
 body.dark .canvas-element:hover {

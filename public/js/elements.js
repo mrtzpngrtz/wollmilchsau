@@ -591,29 +591,15 @@ const Elements = {
 
       if (tool === 'draw') {
         drawingPath = { points: [canvasPos], startPos: canvasPos };
-        // Create a temporary SVG overlay for live preview
-        let preview = document.getElementById('draw-preview');
-        if (!preview) {
-          preview = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          preview.id = 'draw-preview';
-          preview.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;overflow:visible;';
-          Canvas.canvasEl.appendChild(preview);
-        }
-        preview.innerHTML = '';
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const pvg = document.getElementById('preview-svg');
         const isDark = document.body.classList.contains('dark');
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', isDark ? '#E0E0E0' : '#111111');
-        path.setAttribute('stroke-width', '2');
-        path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('stroke-linejoin', 'round');
-        preview.appendChild(path);
+        pvg.innerHTML = `<path id="draw-preview-path" fill="none" stroke="${isDark ? '#E0E0E0' : '#111111'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
         return;
       }
 
       if (['rect', 'circle', 'note'].includes(tool)) {
         drawingStart = canvasPos;
-        drawingShape = { type: tool, x: canvasPos.x, y: canvasPos.y };
+        drawingShape = { type: tool, x: canvasPos.x, y: canvasPos.y, width: 0, height: 0 };
         return;
       }
 
@@ -672,13 +658,14 @@ const Elements = {
       if (drawingPath) {
         const pos = Canvas.screenToCanvas(e.clientX, e.clientY);
         drawingPath.points.push(pos);
-        const preview = document.getElementById('draw-preview');
-        if (preview) {
-          const path = preview.querySelector('path');
-          if (path) {
-            const d = drawingPath.points.map((p, i) => (i === 0 ? `M${p.x} ${p.y}` : `L${p.x} ${p.y}`)).join(' ');
-            path.setAttribute('d', d);
-          }
+        const path = document.getElementById('draw-preview-path');
+        if (path) {
+          const cRect = Canvas.container.getBoundingClientRect();
+          const d = drawingPath.points.map((p, i) => {
+            const s = Canvas.canvasToScreen(p.x, p.y);
+            return (i === 0 ? 'M' : 'L') + (s.x - cRect.left).toFixed(1) + ' ' + (s.y - cRect.top).toFixed(1);
+          }).join(' ');
+          path.setAttribute('d', d);
         }
         return;
       }
@@ -689,6 +676,20 @@ const Elements = {
         drawingShape.height = Math.abs(pos.y - drawingStart.y);
         drawingShape.x = Math.min(pos.x, drawingStart.x);
         drawingShape.y = Math.min(pos.y, drawingStart.y);
+
+        // Live shape preview in screen space
+        const pvg = document.getElementById('preview-svg');
+        const cRect = Canvas.container.getBoundingClientRect();
+        const tl = Canvas.canvasToScreen(drawingShape.x, drawingShape.y);
+        const br = Canvas.canvasToScreen(drawingShape.x + drawingShape.width, drawingShape.y + drawingShape.height);
+        const px = tl.x - cRect.left, py = tl.y - cRect.top;
+        const pw = br.x - tl.x, ph = br.y - tl.y;
+        const stroke = `stroke="${document.body.classList.contains('dark') ? '#E0E0E0' : '#111111'}" stroke-width="1" stroke-dasharray="5,3" fill="none"`;
+        if (drawingShape.type === 'circle') {
+          pvg.innerHTML = `<ellipse cx="${px + pw/2}" cy="${py + ph/2}" rx="${pw/2}" ry="${ph/2}" ${stroke}/>`;
+        } else {
+          pvg.innerHTML = `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" ${stroke}/>`;
+        }
       }
     });
 
@@ -730,9 +731,7 @@ const Elements = {
       // Finalize freehand drawing
       if (drawingPath) {
         const pts = drawingPath.points;
-        // Remove preview
-        const preview = document.getElementById('draw-preview');
-        if (preview) preview.innerHTML = '';
+        document.getElementById('preview-svg').innerHTML = '';
 
         if (pts.length > 2) {
           // Calculate bounding box
@@ -776,6 +775,7 @@ const Elements = {
           App.saveState();
           Canvas.updateMinimap();
         }
+        document.getElementById('preview-svg').innerHTML = '';
         drawingShape = null;
         drawingStart = null;
         App.setTool('select');

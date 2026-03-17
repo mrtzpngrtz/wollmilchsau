@@ -932,15 +932,20 @@ body.dark .upload-toast-bar-track { background: #333; }
   letter-spacing: 0.3px;
 }
 
-.file-thumb-wrap {
-  position: relative;
-  width: 100%;
-  margin-bottom: 2px;
+.el-file--video {
+  padding: 0;
+  gap: 0;
 }
+.el-file--video::before { display: none; }
+
+/* All children non-interactive so the canvas-element drag works */
+.el-file--video * { pointer-events: none; }
 
 .el-file .file-thumb {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  max-height: 120px;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
@@ -950,19 +955,31 @@ body.dark .upload-toast-bar-track { background: #333; }
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   background: rgba(255,255,255,0.88);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 13px;
   color: #111;
-  padding-left: 2px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  pointer-events: none;
+  padding-left: 3px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
 }
+
+.el-file .file-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.65));
+  padding: 16px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+.el-file--video .file-name { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+.el-file--video .file-size { color: rgba(255,255,255,0.7); }
 
 /* --- Shape Elements --- */
 .el-rect {

@@ -163,13 +163,21 @@ const Elements = {
         inner.className = 'el-file';
         inner.style.width = '100%';
         inner.style.height = '100%';
-        inner.innerHTML = `
-          ${data.thumbnailUrl
-            ? `<img class="file-thumb" src="${data.thumbnailUrl}" alt="">`
-            : `<div class="file-icon">${Utils.getFileIcon(data.mimetype, data.originalName)}</div>`}
-          <div class="file-name">${Utils.escapeHtml(data.originalName)}</div>
-          <div class="file-size">${Utils.formatFileSize(data.fileSize)}</div>
-        `;
+        if (data.thumbnailUrl) {
+          inner.classList.add('el-file--video');
+          inner.innerHTML = `
+            <img class="file-thumb" src="${data.thumbnailUrl}" alt="">
+            <div class="file-play">▶</div>
+            <div class="file-overlay">
+              <div class="file-name">${Utils.escapeHtml(data.originalName)}</div>
+              <div class="file-size">${Utils.formatFileSize(data.fileSize)}</div>
+            </div>`;
+        } else {
+          inner.innerHTML = `
+            <div class="file-icon">${Utils.getFileIcon(data.mimetype, data.originalName)}</div>
+            <div class="file-name">${Utils.escapeHtml(data.originalName)}</div>
+            <div class="file-size">${Utils.formatFileSize(data.fileSize)}</div>`;
+        }
         el.appendChild(inner);
         break;
 

@@ -2537,3 +2537,12 @@ body.dark .presence-dot {
   border-color: var(--near-black);
   box-shadow: 0 0 0 1px #444444;
 }
+
+body.dark .collab-cursor-dot {
+  border-color: rgba(255,255,255,0.85);
+}
+
+body.dark .collab-cursor-label {
+  color: #FFFFFF;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}

@@ -673,3 +673,30 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--mid-grey); }
 ::-webkit-scrollbar-thumb:hover { background: var(--dark-grey); }
+
+/* ═══════════════════════════════════════════════════════
+   NIGHT MODE
+   ═══════════════════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --white: #1A1A1A;
+    --off-white: #141414;
+    --light-grey: #2A2A2A;
+    --mid-grey: #444444;
+    --dark-grey: #777777;
+    --charcoal: #AAAAAA;
+    --near-black: #E0E0E0;
+    --black: #E8E8E8;
+    --pure-black: #F2F2F2;
+    --success: #33DD77;
+  }
+
+  .data-table thead {
+    background: #E8E8E8;
+    color: #1A1A1A;
+  }
+
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.5);
+  }
+}

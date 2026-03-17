@@ -24,6 +24,17 @@ const Storage = {
     });
 
     this.initBoardSwitcher();
+
+    document.getElementById('btn-download-board').addEventListener('click', () => this.downloadBoard());
+
+    const uploadInput = document.getElementById('board-upload-input');
+    document.getElementById('btn-upload-board').addEventListener('click', () => uploadInput.click());
+    uploadInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) {
+        this.uploadBoard(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
   },
 
   initBoardSwitcher() {
@@ -568,6 +579,55 @@ const Storage = {
       this.save(cleanName);
       this.hideDashboard();
     });
+  },
+
+  downloadBoard() {
+    const data = {
+      elements: App.elements,
+      connections: App.connections,
+      viewport: { panX: Canvas.panX, panY: Canvas.panY, zoom: Canvas.zoom },
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.currentBoard}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  uploadBoard(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!Array.isArray(data.elements)) throw new Error('Invalid board file');
+
+        App.elements = data.elements;
+        App.connections = data.connections || [];
+
+        if (data.viewport) {
+          Canvas.panX = data.viewport.panX;
+          Canvas.panY = data.viewport.panY;
+          Canvas.zoom = data.viewport.zoom;
+          Canvas.updateTransform();
+          Canvas.drawGrid();
+        }
+
+        Elements.maxZIndex = App.elements.reduce((max, el) => Math.max(max, el.zIndex || 0), 1);
+        Elements.clearSelection();
+        Elements.renderAll();
+        Connections.render();
+        Canvas.updateMinimap();
+        History.clear();
+        History.push({ elements: App.elements, connections: App.connections });
+
+        this.save(this.currentBoard);
+      } catch (err) {
+        alert('Failed to load board file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
   },
 
   async loadBoardList(container, clickToLoad) {

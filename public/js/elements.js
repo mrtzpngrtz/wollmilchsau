@@ -88,6 +88,10 @@ const Elements = {
         defaults.width = extra.width || 100;
         defaults.height = extra.height || 100;
         break;
+      case 'pin':
+        defaults.width = 28;
+        defaults.height = 28;
+        break;
     }
 
     return defaults;
@@ -207,6 +211,13 @@ const Elements = {
         setTimeout(() => Todos.bindEvents(el, data), 0);
         break;
 
+      case 'pin':
+        inner = document.createElement('div');
+        inner.className = 'el-pin';
+        el.appendChild(inner);
+        el.style.overflow = 'visible';
+        break;
+
       case 'draw':
         inner = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         inner.setAttribute('class', 'el-draw');
@@ -261,7 +272,8 @@ const Elements = {
 
   showSelected(dom) {
     dom.classList.add('selected');
-    if (!dom.querySelector('.resize-handle')) {
+    const data = this.getData(dom.dataset.id);
+    if (data?.type !== 'pin' && !dom.querySelector('.resize-handle')) {
       ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'].forEach(dir => {
         const handle = document.createElement('div');
         handle.className = 'resize-handle ' + dir;
@@ -557,6 +569,17 @@ const Elements = {
 
       if (tool === 'todo') {
         const data = this.create('todo', canvasPos.x, canvasPos.y);
+        App.elements.push(data);
+        this.renderElement(data);
+        this.select(data.id);
+        App.setTool('select');
+        App.saveState();
+        Canvas.updateMinimap();
+        return;
+      }
+
+      if (tool === 'pin') {
+        const data = this.create('pin', canvasPos.x - 14, canvasPos.y - 14);
         App.elements.push(data);
         this.renderElement(data);
         this.select(data.id);

@@ -72,6 +72,7 @@ const Toolbar = {
           case 'g': App.setTool('icon'); break;
           case 'd': App.setTool('todo'); break;
           case 'p': App.setTool('draw'); break;
+          case 'k': App.setTool('pin'); break;
           case 'delete':
           case 'backspace':
             Elements.deleteSelected();

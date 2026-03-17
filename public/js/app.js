@@ -45,7 +45,7 @@ const App = {
     this.initProfile();
 
     console.log('WOLLMILCHSAU v0.8.1 — Ready');
-    console.log('Keys: V=Select H=Pan T=Text N=Note R=Rect A=Arrow D=Todo Space=Pan');
+    console.log('Keys: V=Select H=Pan T=Text N=Note R=Rect A=Arrow D=Todo P=Draw K=Pin Space=Pan');
   },
 
   async loadCurrentUser() {

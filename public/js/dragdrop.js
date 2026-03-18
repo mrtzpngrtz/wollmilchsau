@@ -10,7 +10,7 @@ const DragDrop = {
     const dropZone = document.getElementById('drop-zone');
     let dragCounter = 0;
 
-    const isDashboardOpen = () => !document.getElementById('boards-dashboard').classList.contains('hidden');
+    const isDashboardOpen = () => document.getElementById('boards-dashboard')?.classList.contains('hidden') === false;
 
     document.addEventListener('dragenter', (e) => {
       e.preventDefault();

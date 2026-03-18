@@ -47,6 +47,20 @@ const Properties = {
       `;
     }
 
+    if (data.type === 'heading') {
+      const currentWeight = data.fontWeight || '700';
+      html += `
+        <div class="prop-group">
+          <div class="prop-label">04 — WEIGHT</div>
+          <div class="weight-row">
+            ${[['100','Thin'],['300','Light'],['500','Medium'],['700','Bold']].map(([w, label]) =>
+              `<div class="weight-option ${currentWeight === w ? 'active' : ''}" data-weight="${w}">${label}</div>`
+            ).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     if (data.type === 'note') {
       html += `
         <div class="prop-group">
@@ -164,6 +178,15 @@ const Properties = {
         const prop = opt.dataset.prop;
         const val = opt.dataset.color || opt.dataset.notecolor || opt.dataset.bordercolor || opt.dataset.fillcolor;
         Elements.updateElement(data.id, { [prop]: val });
+        this.show(Elements.getData(data.id));
+        App.saveState();
+      });
+    });
+
+    // Bind weight options
+    content.querySelectorAll('.weight-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        Elements.updateElement(data.id, { fontWeight: opt.dataset.weight });
         this.show(Elements.getData(data.id));
         App.saveState();
       });

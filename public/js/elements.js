@@ -127,6 +127,7 @@ const Elements = {
         inner.textContent = data.content;
         inner.style.fontSize = (data.fontSize || 50) + 'px';
         inner.style.color = data.color || '#111111';
+        inner.style.fontWeight = data.fontWeight || '700';
         el.appendChild(inner);
         break;
 
@@ -354,6 +355,33 @@ const Elements = {
     this.clipboard = this.selected.map(id => JSON.parse(JSON.stringify(this.getData(id)))).filter(Boolean);
   },
 
+  copyImageToClipboard() {
+    if (this.selected.length !== 1) return;
+    const data = this.getData(this.selected[0]);
+    if (!data || data.type !== 'image' || !data.url) return;
+
+    fetch(data.url)
+      .then(r => r.blob())
+      .then(blob => {
+        // Convert to PNG if needed (browsers require image/png for ClipboardItem)
+        if (blob.type === 'image/png') return blob;
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            canvas.toBlob(resolve, 'image/png');
+          };
+          img.src = URL.createObjectURL(blob);
+        });
+      })
+      .then(pngBlob => navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]))
+      .then(() => Utils.toast('Image copied to clipboard'))
+      .catch(() => Utils.toast('Could not copy image'));
+  },
+
   paste() {
     if (this.clipboard.length === 0) return;
     const newIds = [];
@@ -462,6 +490,7 @@ const Elements = {
       if (props.content !== undefined) headingEl.textContent = props.content;
       if (props.fontSize !== undefined) headingEl.style.fontSize = props.fontSize + 'px';
       if (props.color !== undefined) headingEl.style.color = props.color;
+      if (props.fontWeight !== undefined) headingEl.style.fontWeight = props.fontWeight;
     }
     if (data.type === 'note') {
       const noteEl = dom.querySelector('.el-note');

@@ -888,6 +888,35 @@ body.dark .upload-toast { background: #1E1E1E; border-color: #333; }
 body.dark .upload-toast-name { color: #E0E0E0; }
 body.dark .upload-toast-bar-track { background: #333; }
 
+.util-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 7px 16px;
+  border-radius: 2px;
+  z-index: 9900;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.util-toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+body.dark .util-toast {
+  background: #E8E8E8;
+  color: #111111;
+}
+
 /* --- File Element --- */
 .el-file {
   width: 160px;
@@ -1240,6 +1269,40 @@ body.dark .upload-toast-bar-track { background: #333; }
   display: flex;
   gap: 3px;
   flex-wrap: wrap;
+}
+
+.weight-row {
+  display: flex;
+  gap: 4px;
+}
+
+.weight-option {
+  flex: 1;
+  padding: 4px 0;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--light-grey);
+  border-radius: 2px;
+  cursor: pointer;
+  color: var(--black);
+  background: transparent;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.weight-option:nth-child(1) { font-weight: 100; }
+.weight-option:nth-child(2) { font-weight: 300; }
+.weight-option:nth-child(3) { font-weight: 500; }
+.weight-option:nth-child(4) { font-weight: 700; }
+
+.weight-option:hover {
+  border-color: var(--black);
+}
+
+.weight-option.active {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
 }
 
 .color-option {
@@ -2808,6 +2871,21 @@ body.dark .color-option {
 
 body.dark .color-option:hover,
 body.dark .color-option.active {
+  border-color: #E8E8E8;
+}
+
+body.dark .weight-option {
+  color: #E8E8E8;
+  border-color: #2A2A2A;
+}
+
+body.dark .weight-option:hover {
+  border-color: #E8E8E8;
+}
+
+body.dark .weight-option.active {
+  background: #E8E8E8;
+  color: #111111;
   border-color: #E8E8E8;
 }
 

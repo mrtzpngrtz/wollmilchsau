@@ -2,6 +2,13 @@
 const ContextMenu = {
   show(x, y) {
     const menu = document.getElementById('context-menu');
+
+    // Show "Copy Image" only when a single image element is selected
+    const copyImageItem = document.getElementById('ctx-copy-image');
+    const singleImage = Elements.selected.length === 1 &&
+      Elements.getData(Elements.selected[0])?.type === 'image';
+    copyImageItem.classList.toggle('hidden', !singleImage);
+
     menu.classList.remove('hidden');
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
@@ -25,6 +32,7 @@ const ContextMenu = {
         switch (action) {
           case 'duplicate': Elements.duplicateSelected(); break;
           case 'copy': Elements.copy(); break;
+          case 'copy-image': Elements.copyImageToClipboard(); break;
           case 'paste': Elements.paste(); break;
           case 'bring-front': Elements.bringToFront(); break;
           case 'send-back': Elements.sendToBack(); break;

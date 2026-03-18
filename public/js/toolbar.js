@@ -97,7 +97,11 @@ const Toolbar = {
             break;
           case 'c':
             e.preventDefault();
-            Elements.copy();
+            if (e.shiftKey) {
+              Elements.copyImageToClipboard();
+            } else {
+              Elements.copy();
+            }
             break;
           case 'v':
             e.preventDefault();

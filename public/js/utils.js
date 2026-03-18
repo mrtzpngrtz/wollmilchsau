@@ -136,6 +136,18 @@ const Utils = {
   escapeAttr(str) {
     return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   },
+
+  toast(msg, duration = 2000) {
+    const t = document.createElement('div');
+    t.className = 'util-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('util-toast--visible'));
+    setTimeout(() => {
+      t.classList.remove('util-toast--visible');
+      setTimeout(() => t.remove(), 300);
+    }, duration);
+  },
 };
 
 /* === DIALOG (app-styled alert / confirm / prompt) === */

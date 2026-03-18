@@ -104,8 +104,8 @@ const Toolbar = {
             }
             break;
           case 'v':
-            e.preventDefault();
-            Elements.paste();
+            // Paste is handled by the native paste event in dragdrop.js
+            // Don't preventDefault here — that would suppress the paste event
             break;
           case 'd':
             e.preventDefault();

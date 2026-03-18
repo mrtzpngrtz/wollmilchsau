@@ -20,6 +20,7 @@ const App = {
     IconPicker.init();
     FileViewer.init();
     Suggestions.init();
+    DrawOptions.init();
 
     // Push initial empty state
     History.push({ elements: [], connections: [] });
@@ -149,6 +150,10 @@ const App = {
       document.body.classList.toggle('dark');
       const isDark = document.body.classList.contains('dark');
       localStorage.setItem('wms-darkmode', isDark);
+      // Swap draw settings default color
+      if (isDark && Elements.drawSettings.strokeColor === '#111111') Elements.drawSettings.strokeColor = '#E0E0E0';
+      else if (!isDark && Elements.drawSettings.strokeColor === '#E0E0E0') Elements.drawSettings.strokeColor = '#111111';
+      DrawOptions._syncUI();
       // Swap element colors for dark/light
       this.swapElementColors(wasDark, isDark);
       Elements.renderAll();
@@ -207,6 +212,8 @@ const App = {
     else if (['rect', 'circle', 'note'].includes(tool)) container.classList.add('tool-rect');
     else if (tool === 'arrow') container.classList.add('tool-arrow');
     else if (tool === 'draw') container.classList.add('tool-draw');
+
+    DrawOptions.toggle(tool === 'draw');
 
     if (tool === 'icon') {
       const center = Canvas.screenToCanvas(window.innerWidth / 2, window.innerHeight / 2);

@@ -7,6 +7,21 @@ const Elements = {
   resizeStart: null,
   clipboard: [],
   maxZIndex: 1,
+  get drawSettings() {
+    if (!this._drawSettings) {
+      const dark = document.body?.classList.contains('dark');
+      this._drawSettings = { strokeColor: dark ? '#E0E0E0' : '#111111', strokeWidth: 2, strokeStyle: 'solid' };
+    }
+    return this._drawSettings;
+  },
+  set drawSettings(v) { this._drawSettings = v; },
+
+  _dashArray(style, width) {
+    const w = width || 2;
+    if (style === 'dashed') return `${w * 4},${w * 2}`;
+    if (style === 'dotted') return `${w},${w * 2}`;
+    return null;
+  },
 
   init() {
     this.bindCanvasEvents();
@@ -83,8 +98,9 @@ const Elements = {
         break;
       case 'draw':
         defaults.points = extra.points || [];
-        defaults.strokeColor = extra.strokeColor || (document.body.classList.contains('dark') ? '#E0E0E0' : '#111111');
-        defaults.strokeWidth = extra.strokeWidth || 2;
+        defaults.strokeColor = extra.strokeColor || Elements.drawSettings.strokeColor;
+        defaults.strokeWidth = extra.strokeWidth || Elements.drawSettings.strokeWidth;
+        defaults.strokeStyle = extra.strokeStyle || Elements.drawSettings.strokeStyle || 'solid';
         defaults.width = extra.width || 100;
         defaults.height = extra.height || 100;
         break;
@@ -247,6 +263,8 @@ const Elements = {
           path.setAttribute('stroke-width', data.strokeWidth || 2);
           path.setAttribute('stroke-linecap', 'round');
           path.setAttribute('stroke-linejoin', 'round');
+          const da = Elements._dashArray(data.strokeStyle, data.strokeWidth || 2);
+          if (da) path.setAttribute('stroke-dasharray', da);
           inner.appendChild(path);
         }
         el.appendChild(inner);
@@ -510,6 +528,18 @@ const Elements = {
       if (props.borderColor !== undefined) circleEl.style.borderColor = props.borderColor;
       if (props.fillColor !== undefined) circleEl.style.backgroundColor = props.fillColor;
     }
+    if (data.type === 'draw') {
+      const pathEl = dom.querySelector('.el-draw path');
+      if (pathEl) {
+        if (props.strokeColor !== undefined) pathEl.setAttribute('stroke', props.strokeColor);
+        if (props.strokeWidth !== undefined) pathEl.setAttribute('stroke-width', props.strokeWidth);
+        if (props.strokeStyle !== undefined || props.strokeWidth !== undefined) {
+          const da = Elements._dashArray(data.strokeStyle, data.strokeWidth);
+          if (da) pathEl.setAttribute('stroke-dasharray', da);
+          else pathEl.removeAttribute('stroke-dasharray');
+        }
+      }
+    }
     if (data.type === 'icon' && props.icon !== undefined) {
       dom.querySelector('.el-icon').textContent = props.icon;
     }
@@ -562,6 +592,7 @@ const Elements = {
             origY: data.y,
             origW: data.width,
             origH: data.height,
+            origRatio: data.width / data.height,
           };
         }
         return;
@@ -674,8 +705,9 @@ const Elements = {
       if (tool === 'draw') {
         drawingPath = { points: [canvasPos], startPos: canvasPos };
         const pvg = document.getElementById('preview-svg');
-        const isDark = document.body.classList.contains('dark');
-        pvg.innerHTML = `<path id="draw-preview-path" fill="none" stroke="${isDark ? '#E0E0E0' : '#111111'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        const ds = Elements.drawSettings;
+        const da = Elements._dashArray(ds.strokeStyle, ds.strokeWidth);
+        pvg.innerHTML = `<path id="draw-preview-path" fill="none" stroke="${ds.strokeColor}" stroke-width="${ds.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"${da ? ` stroke-dasharray="${da}"` : ''}/>`;
         return;
       }
 
@@ -716,6 +748,32 @@ const Elements = {
         if (r.dir.includes('w')) { newW = Math.max(40, r.origW - dx); newX = r.origX + (r.origW - newW); }
         if (r.dir.includes('s')) newH = Math.max(30, r.origH + dy);
         if (r.dir.includes('n')) { newH = Math.max(30, r.origH - dy); newY = r.origY + (r.origH - newH); }
+
+        // Constrain aspect ratio: Shift key or element has lockedRatio
+        const data = this.getData(r.id);
+        const constrain = e.shiftKey || (data && data.lockedRatio);
+        if (constrain && r.origW && r.origH) {
+          const ratio = r.origRatio || (r.origW / r.origH);
+          if (r.dir.length === 1) {
+            // Edge handle: drive the other axis from the one being changed
+            if (r.dir === 'e' || r.dir === 'w') {
+              newH = newW / ratio;
+              if (r.dir === 'n') newY = r.origY + r.origH - newH;
+            } else {
+              newW = newH * ratio;
+              if (r.dir === 'n') newY = r.origY + r.origH - newH;
+            }
+          } else {
+            // Corner handle: use the larger scale to avoid shrinking one axis below min
+            const scaleW = newW / r.origW;
+            const scaleH = newH / r.origH;
+            const scale = Math.max(scaleW, scaleH);
+            newW = Math.max(40, r.origW * scale);
+            newH = Math.max(30, newW / ratio);
+            if (r.dir.includes('w')) newX = r.origX + r.origW - newW;
+            if (r.dir.includes('n')) newY = r.origY + r.origH - newH;
+          }
+        }
 
         this.updateElement(r.id, { x: newX, y: newY, width: newW, height: newH });
         Connections.render();
@@ -830,10 +888,14 @@ const Elements = {
           const h = maxY - minY;
           // Normalize points relative to origin
           const normalized = pts.map(p => ({ x: p.x - minX, y: p.y - minY }));
+          const ds = Elements.drawSettings;
           const data = this.create('draw', minX, minY, {
             points: normalized,
             width: Math.max(w, 10),
             height: Math.max(h, 10),
+            strokeColor: ds.strokeColor,
+            strokeWidth: ds.strokeWidth,
+            strokeStyle: ds.strokeStyle,
           });
           App.elements.push(data);
           this.renderElement(data);

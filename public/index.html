@@ -132,6 +132,34 @@
     </div>
   </div>
 
+  <!-- Draw Options Bar (shown when draw tool is active) -->
+  <div id="draw-options" class="hidden">
+    <div class="draw-opt-group">
+      <div class="draw-opt-label">COLOR</div>
+      <div class="draw-opt-colors" id="draw-opt-colors"></div>
+    </div>
+    <div class="draw-opt-sep"></div>
+    <div class="draw-opt-group">
+      <div class="draw-opt-label">SIZE</div>
+      <div class="draw-opt-sizes">
+        <div class="draw-opt-size" data-size="1"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-size" data-size="2"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-size" data-size="4"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-size" data-size="8"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-size" data-size="16"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="12" stroke-linecap="round"/></svg></div>
+      </div>
+    </div>
+    <div class="draw-opt-sep"></div>
+    <div class="draw-opt-group">
+      <div class="draw-opt-label">STROKE</div>
+      <div class="draw-opt-styles">
+        <div class="draw-opt-style active" data-style="solid"><svg width="32" height="12"><line x1="2" y1="6" x2="30" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-style" data-style="dashed"><svg width="32" height="12"><line x1="2" y1="6" x2="30" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="6,4"/></svg></div>
+        <div class="draw-opt-style" data-style="dotted"><svg width="32" height="12"><line x1="2" y1="6" x2="30" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="2,4"/></svg></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Canvas container -->
   <div id="canvas-container">
     <svg id="grid-svg"></svg>
@@ -312,6 +340,7 @@
   <script src="/js/todos.js"></script>
   <script src="/js/elements.js"></script>
   <script src="/js/properties.js"></script>
+  <script src="/js/drawoptions.js"></script>
   <script src="/js/contextmenu.js"></script>
   <script src="/js/connections.js"></script>
   <script src="/js/toolbar.js"></script>

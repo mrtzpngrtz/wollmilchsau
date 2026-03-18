@@ -12,6 +12,8 @@ const Properties = {
     // Position popup next to the element
     this.positionPopup(data);
 
+    const ratioLocked = !!data.lockedRatio;
+    const ratioPresets = [['1:1', 1], ['4:3', 4/3], ['3:2', 3/2], ['16:9', 16/9]];
     let html = `
       <div class="prop-group">
         <div class="prop-label">01 — ${data.type.toUpperCase()}</div>
@@ -24,6 +26,12 @@ const Properties = {
           <span class="prop-slider-label">H</span>
           <input class="prop-slider" type="range" data-prop="height" value="${Math.round(data.height)}" min="20" max="800" />
           <span class="prop-slider-value" data-display="height">${Math.round(data.height)}</span>
+        </div>
+        <div class="prop-ratio-row">
+          <button class="prop-ratio-lock ${ratioLocked ? 'active' : ''}" id="prop-ratio-lock" title="Lock aspect ratio">${ratioLocked ? '⊠' : '⊡'}</button>
+          <div class="prop-ratio-presets">
+            ${ratioPresets.map(([label, r]) => `<div class="prop-ratio-preset" data-ratio="${r}">${label}</div>`).join('')}
+          </div>
         </div>
       </div>
     `;
@@ -124,6 +132,36 @@ const Properties = {
       `;
     }
 
+    if (data.type === 'draw') {
+      const sw = data.strokeWidth || 2;
+      const ss = data.strokeStyle || 'solid';
+      const sc = data.strokeColor || '#111111';
+      html += `
+        <div class="prop-group">
+          <div class="prop-label">02 — COLOR</div>
+          <div class="color-row">
+            ${Utils.ELEMENT_COLORS.map(c => `<div class="color-option ${sc === c ? 'active' : ''}" style="background:${c}" data-color="${c}" data-prop="strokeColor"></div>`).join('')}
+          </div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-label">03 — SIZE</div>
+          <div class="prop-slider-row">
+            <span class="prop-slider-label">W</span>
+            <input class="prop-slider" type="range" data-prop="strokeWidth" value="${sw}" min="1" max="40" />
+            <span class="prop-slider-value" data-display="strokeWidth">${sw}</span>
+          </div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-label">04 — STROKE</div>
+          <div class="weight-row">
+            ${[['solid','——'],['dashed','- -'],['dotted','···']].map(([s, label]) =>
+              `<div class="weight-option ${ss === s ? 'active' : ''}" data-stroke="${s}">${label}</div>`
+            ).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     content.innerHTML = html;
 
     // Bind sliders
@@ -143,6 +181,20 @@ const Properties = {
               height: origData._origH * val / 100,
             });
           }
+        } else if ((prop === 'width' || prop === 'height') && Elements.getData(data.id)?.lockedRatio) {
+          const current = Elements.getData(data.id);
+          const ratio = current.width / current.height;
+          if (prop === 'width') {
+            const newH = Math.round(val / ratio);
+            content.querySelector('[data-display="height"]').textContent = newH;
+            content.querySelector('[data-prop="height"]').value = newH;
+            Elements.updateElement(data.id, { width: val, height: newH });
+          } else {
+            const newW = Math.round(val * ratio);
+            content.querySelector('[data-display="width"]').textContent = newW;
+            content.querySelector('[data-prop="width"]').value = newW;
+            Elements.updateElement(data.id, { height: val, width: newW });
+          }
         } else {
           Elements.updateElement(data.id, { [prop]: val });
         }
@@ -159,6 +211,29 @@ const Properties = {
           data._origH = data.height;
         }
       }
+    });
+
+    // Bind ratio lock button
+    const ratioLockBtn = content.querySelector('#prop-ratio-lock');
+    if (ratioLockBtn) {
+      ratioLockBtn.addEventListener('click', () => {
+        const current = Elements.getData(data.id);
+        Elements.updateElement(data.id, { lockedRatio: !current.lockedRatio });
+        this.show(Elements.getData(data.id));
+        App.saveState();
+      });
+    }
+
+    // Bind ratio presets
+    content.querySelectorAll('.prop-ratio-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ratio = parseFloat(btn.dataset.ratio);
+        const current = Elements.getData(data.id);
+        const newH = Math.round(current.width / ratio);
+        Elements.updateElement(data.id, { height: newH, lockedRatio: true });
+        this.show(Elements.getData(data.id));
+        App.saveState();
+      });
     });
 
     // Bind number inputs
@@ -183,10 +258,14 @@ const Properties = {
       });
     });
 
-    // Bind weight options
+    // Bind weight / stroke options
     content.querySelectorAll('.weight-option').forEach(opt => {
       opt.addEventListener('click', () => {
-        Elements.updateElement(data.id, { fontWeight: opt.dataset.weight });
+        if (opt.dataset.stroke !== undefined) {
+          Elements.updateElement(data.id, { strokeStyle: opt.dataset.stroke });
+        } else {
+          Elements.updateElement(data.id, { fontWeight: opt.dataset.weight });
+        }
         this.show(Elements.getData(data.id));
         App.saveState();
       });

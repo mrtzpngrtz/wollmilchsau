@@ -131,7 +131,7 @@ const Elements = {
       case 'text':
         inner = document.createElement('div');
         inner.className = 'el-text';
-        inner.textContent = data.content;
+        inner.innerHTML = data.content || '';
         inner.style.fontSize = (data.fontSize || 14) + 'px';
         inner.style.color = data.color || '#111111';
         el.appendChild(inner);
@@ -140,7 +140,7 @@ const Elements = {
       case 'heading':
         inner = document.createElement('div');
         inner.className = 'el-heading';
-        inner.textContent = data.content;
+        inner.innerHTML = data.content || '';
         inner.style.fontSize = (data.fontSize || 50) + 'px';
         inner.style.color = data.color || '#111111';
         inner.style.fontWeight = data.fontWeight || '700';
@@ -153,7 +153,7 @@ const Elements = {
         if (data.noteColor && data.noteColor !== 'default') {
           inner.classList.add('note-' + data.noteColor);
         }
-        inner.textContent = data.content;
+        inner.innerHTML = data.content || '';
         inner.style.width = '100%';
         inner.style.height = '100%';
         el.appendChild(inner);
@@ -735,6 +735,7 @@ const Elements = {
           this.updateElement(id, { x: x + dx, y: y + dy });
         });
         Connections.render();
+        Properties.updatePosition();
         return;
       }
 
@@ -778,6 +779,7 @@ const Elements = {
 
         this.updateElement(r.id, { x: newX, y: newY, width: newW, height: newH });
         Connections.render();
+        Properties.updatePosition();
         return;
       }
 
@@ -955,6 +957,18 @@ const Elements = {
     });
   },
 
+  sanitizeContent(html) {
+    // Convert block-level wrappers (Chrome/Edge use <div> for newlines) to <br>
+    let s = html
+      .replace(/<div>/gi, '<br>').replace(/<\/div>/gi, '')
+      .replace(/<p>/gi, '<br>').replace(/<\/p>/gi, '');
+    // Remove leading <br> that Chrome prepends
+    s = s.replace(/^(<br\s*\/?>)+/i, '');
+    // Strip all tags except safe inline formatting
+    s = s.replace(/<(?!\/?(?:b|strong|i|em|u|br)\b)[^>]*>/gi, '');
+    return s;
+  },
+
   startEditing(id) {
     const dom = this.getDom(id);
     const data = this.getData(id);
@@ -974,7 +988,7 @@ const Elements = {
 
     const stopEditing = () => {
       editable.removeAttribute('contenteditable');
-      data.content = editable.textContent;
+      data.content = this.sanitizeContent(editable.innerHTML);
       if (data.type === 'text' || data.type === 'heading') {
         data.height = editable.offsetHeight;
       }

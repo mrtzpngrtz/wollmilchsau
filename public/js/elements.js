@@ -138,6 +138,26 @@ const Elements = {
         inner.style.color = data.color || '#111111';
         inner.style.textAlign = data.textAlign || 'left';
         el.appendChild(inner);
+        if (data.boxed) {
+          const expandBtn = document.createElement('div');
+          expandBtn.className = 'text-expand-btn';
+          expandBtn.textContent = '+';
+          expandBtn.title = 'Expand to fit content';
+          expandBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const d = this.getData(data.id);
+            if (d) {
+              const newH = inner.scrollHeight + 20;
+              this.updateElement(data.id, { height: newH });
+              d.height = newH;
+              App.saveState();
+              this.checkTextOverflow(el);
+            }
+          });
+          el.appendChild(expandBtn);
+          el.style.overflow = 'visible';
+          setTimeout(() => this.checkTextOverflow(el), 0);
+        }
         break;
 
       case 'heading':
@@ -852,6 +872,8 @@ const Elements = {
       }
 
       if (this.resizing) {
+        const dom = this.getDom(this.resizing.id);
+        if (dom) this.checkTextOverflow(dom);
         this.resizing = null;
         App.saveState();
         Canvas.updateMinimap();
@@ -983,6 +1005,13 @@ const Elements = {
     });
   },
 
+  checkTextOverflow(dom) {
+    const textEl = dom.querySelector('.el-text--boxed');
+    const btn = dom.querySelector('.text-expand-btn');
+    if (!textEl || !btn) return;
+    btn.classList.toggle('visible', textEl.scrollHeight > textEl.clientHeight + 2);
+  },
+
   sanitizeContent(html) {
     // Convert block-level wrappers (Chrome/Edge use <div> for newlines) to <br>
     let s = html
@@ -1023,6 +1052,7 @@ const Elements = {
       }
       App.saveState();
       editable.removeEventListener('blur', stopEditing);
+      this.checkTextOverflow(dom);
     };
 
     editable.addEventListener('blur', stopEditing);

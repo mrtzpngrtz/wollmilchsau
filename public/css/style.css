@@ -770,6 +770,34 @@ body.dark .board-dropdown-item .board-name {
   resize: none;
 }
 
+.text-expand-btn {
+  display: none;
+  position: absolute;
+  bottom: -28px;
+  left: 0;
+  right: 0;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 100;
+  line-height: 1;
+  color: var(--black);
+  opacity: 0.3;
+  cursor: pointer;
+  user-select: none;
+  pointer-events: all;
+  letter-spacing: -2px;
+}
+
+.text-expand-btn.visible {
+  display: flex;
+}
+
+.text-expand-btn:hover {
+  opacity: 0.8;
+}
+
 /* --- Heading Element --- */
 .el-heading {
   padding: 4px 8px;

@@ -54,6 +54,14 @@ const DragDrop = {
 
       e.preventDefault();
 
+      // If the user just did Ctrl+C on canvas elements, paste those
+      if (Elements._pendingInternalPaste) {
+        Elements._pendingInternalPaste = false;
+        Elements.paste();
+        return;
+      }
+
+      // Otherwise check system clipboard for an image
       const items = Array.from(e.clipboardData?.items || []);
       const imageItem = items.find(item => item.type.startsWith('image/'));
 
@@ -63,7 +71,6 @@ const DragDrop = {
         const pos = Canvas.screenToCanvas(window.innerWidth / 2, window.innerHeight / 2);
         await this.addFileToCanvas(file, pos.x - 200, pos.y - 150);
       } else {
-        // Fall back to internal element clipboard
         Elements.paste();
       }
     });

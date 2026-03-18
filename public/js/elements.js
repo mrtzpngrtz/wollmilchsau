@@ -371,6 +371,7 @@ const Elements = {
 
   copy() {
     this.clipboard = this.selected.map(id => JSON.parse(JSON.stringify(this.getData(id)))).filter(Boolean);
+    this._pendingInternalPaste = this.clipboard.length > 0;
   },
 
   copyImageToClipboard() {

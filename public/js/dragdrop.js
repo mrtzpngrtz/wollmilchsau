@@ -3,6 +3,7 @@ const DragDrop = {
   init() {
     this.initDragDrop();
     this.initFileInput();
+    this.initClipboardPaste();
   },
 
   initDragDrop() {
@@ -43,6 +44,25 @@ const DragDrop = {
         await this.addFileToCanvas(file, canvasPos.x + offsetX, canvasPos.y);
         offsetX += 220;
       }
+    });
+  },
+
+  initClipboardPaste() {
+    document.addEventListener('paste', async (e) => {
+      // Ignore when typing in an input or editable area
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.closest('[contenteditable]')) return;
+
+      const items = Array.from(e.clipboardData?.items || []);
+      const imageItem = items.find(item => item.type.startsWith('image/'));
+      if (!imageItem) return;
+
+      e.preventDefault();
+      const file = imageItem.getAsFile();
+      if (!file) return;
+
+      // Place in center of current viewport
+      const pos = Canvas.screenToCanvas(window.innerWidth / 2, window.innerHeight / 2);
+      await this.addFileToCanvas(file, pos.x - 200, pos.y - 150);
     });
   },
 

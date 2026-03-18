@@ -30,6 +30,13 @@ const Canvas = {
   bindEvents() {
     // Wheel zoom
     this.container.addEventListener('wheel', (e) => {
+      // Let scroll pass through to boxed text elements
+      const textEl = e.target.closest('.el-text--boxed');
+      if (textEl) {
+        textEl.scrollTop += e.deltaY;
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       const rect = this.container.getBoundingClientRect();

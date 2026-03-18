@@ -763,6 +763,13 @@ body.dark .board-dropdown-item .board-name {
   outline: none;
 }
 
+.el-text--boxed {
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  resize: none;
+}
+
 /* --- Heading Element --- */
 .el-heading {
   padding: 4px 8px;

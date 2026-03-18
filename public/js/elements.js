@@ -45,8 +45,9 @@ const Elements = {
       case 'text':
         defaults.width = 200;
         defaults.height = 30;
-        defaults.content = extra.content || 'Double-click to edit';
+        defaults.content = extra.content || '';
         defaults.fontSize = 14;
+        defaults.boxed = extra.boxed || false;
         break;
       case 'heading':
         defaults.width = 500;
@@ -121,7 +122,7 @@ const Elements = {
     el.style.left = data.x + 'px';
     el.style.top = data.y + 'px';
     el.style.width = data.width + 'px';
-    el.style.height = (data.type === 'text' || data.type === 'heading') ? 'auto' : data.height + 'px';
+    el.style.height = ((data.type === 'text' && !data.boxed) || data.type === 'heading') ? 'auto' : data.height + 'px';
     el.style.zIndex = data.zIndex;
 
     if (data.locked) el.classList.add('locked');
@@ -130,7 +131,7 @@ const Elements = {
     switch (data.type) {
       case 'text':
         inner = document.createElement('div');
-        inner.className = 'el-text';
+        inner.className = 'el-text' + (data.boxed ? ' el-text--boxed' : '');
         inner.innerHTML = data.content || '';
         inner.style.fontSize = (data.fontSize || 14) + 'px';
         inner.style.color = data.color || '#111111';
@@ -495,7 +496,7 @@ const Elements = {
     if (props.x !== undefined) dom.style.left = props.x + 'px';
     if (props.y !== undefined) dom.style.top = props.y + 'px';
     if (props.width !== undefined) dom.style.width = props.width + 'px';
-    if (props.height !== undefined && data.type !== 'text' && data.type !== 'heading') dom.style.height = props.height + 'px';
+    if (props.height !== undefined && (data.type !== 'text' || data.boxed) && data.type !== 'heading') dom.style.height = props.height + 'px';
     if (props.zIndex !== undefined) dom.style.zIndex = props.zIndex;
 
     if (data.type === 'text') {
@@ -641,13 +642,8 @@ const Elements = {
       const canvasPos = Canvas.screenToCanvas(e.clientX, e.clientY);
 
       if (tool === 'text') {
-        const data = this.create('text', canvasPos.x, canvasPos.y);
-        App.elements.push(data);
-        this.renderElement(data);
-        this.select(data.id);
-        setTimeout(() => this.startEditing(data.id), 50);
-        App.setTool('select');
-        App.saveState();
+        drawingStart = canvasPos;
+        drawingShape = { type: 'text', x: canvasPos.x, y: canvasPos.y, width: 0, height: 0 };
         return;
       }
 
@@ -830,6 +826,10 @@ const Elements = {
         const stroke = `stroke="${document.body.classList.contains('dark') ? '#E0E0E0' : '#111111'}" stroke-width="1" stroke-dasharray="5,3" fill="none"`;
         if (drawingShape.type === 'circle') {
           pvg.innerHTML = `<ellipse cx="${px + pw/2}" cy="${py + ph/2}" rx="${pw/2}" ry="${ph/2}" ${stroke}/>`;
+        } else if (drawingShape.type === 'text') {
+          const tc = document.body.classList.contains('dark') ? '#E0E0E0' : '#111111';
+          pvg.innerHTML = `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" ${stroke}/>` +
+            `<text x="${px + 6}" y="${py + 16}" font-size="11" font-family="monospace" fill="${tc}" opacity="0.5">T</text>`;
         } else {
           pvg.innerHTML = `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" ${stroke}/>`;
         }
@@ -911,7 +911,26 @@ const Elements = {
       }
 
       if (drawingShape && drawingStart) {
-        if (drawingShape.width > 10 || drawingShape.height > 10) {
+        const isDrawn = drawingShape.width > 20 && drawingShape.height > 20;
+        if (drawingShape.type === 'text') {
+          let data;
+          if (isDrawn) {
+            data = this.create('text', drawingShape.x, drawingShape.y, {
+              width: Math.max(drawingShape.width, 80),
+              height: Math.max(drawingShape.height, 40),
+              boxed: true,
+            });
+          } else {
+            // Click without drag → small inline text at click point
+            data = this.create('text', drawingShape.x, drawingShape.y);
+          }
+          App.elements.push(data);
+          this.renderElement(data);
+          this.select(data.id);
+          App.saveState();
+          Canvas.updateMinimap();
+          setTimeout(() => this.startEditing(data.id), 50);
+        } else if (drawingShape.width > 10 || drawingShape.height > 10) {
           const data = this.create(drawingShape.type, drawingShape.x, drawingShape.y, {
             width: Math.max(drawingShape.width, 40),
             height: Math.max(drawingShape.height, 30),
@@ -989,7 +1008,7 @@ const Elements = {
     const stopEditing = () => {
       editable.removeAttribute('contenteditable');
       data.content = this.sanitizeContent(editable.innerHTML);
-      if (data.type === 'text' || data.type === 'heading') {
+      if ((data.type === 'text' && !data.boxed) || data.type === 'heading') {
         data.height = editable.offsetHeight;
       }
       App.saveState();

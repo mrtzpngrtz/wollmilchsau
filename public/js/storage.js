@@ -641,7 +641,9 @@ const Storage = {
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = `${name}.json`;
+      const now = new Date();
+      const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}`;
+      a.download = `${name}_${ts}.json`;
       a.click();
       URL.revokeObjectURL(blobUrl);
     } finally {

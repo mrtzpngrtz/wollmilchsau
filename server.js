@@ -144,7 +144,11 @@ app.get('/login', (req, res) => {
 });
 
 app.get('/', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'home.html'));
+});
+
+app.get('/canvas', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'canvas.html'));
 });
 
 app.get('/admin', requireAdmin, (req, res) => {

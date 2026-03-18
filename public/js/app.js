@@ -26,19 +26,21 @@ const App = {
     History.push({ elements: [], connections: [] });
     History.updateButtons();
 
-    // Dashboard
-    Storage.initDashboard();
-    Storage.showDashboard();
-
-    // Click brand name to open dashboard
-    document.querySelector('.brand-name').style.cursor = 'pointer';
-    document.querySelector('.brand-name').addEventListener('click', () => {
-      if (App.elements.length > 0) Storage.save(Storage.currentBoard);
-      Storage.showDashboard();
-    });
-
-    // Dark mode
+    // Dark mode (apply before board renders)
     this.initDarkMode();
+
+    // Load board from URL params — redirect home if missing
+    const params = new URLSearchParams(window.location.search);
+    const boardName = params.get('board');
+    if (!boardName) { window.location.href = '/'; return; }
+    await Storage.load(boardName, params.get('owner') || null);
+
+    // Click brand name to go home (saves first)
+    document.querySelector('.brand-name').style.cursor = 'pointer';
+    document.querySelector('.brand-name').addEventListener('click', async () => {
+      if (App.elements.length > 0) await Storage.save(Storage.currentBoard);
+      window.location.href = '/';
+    });
 
     // Logout
     this.initLogout();
@@ -139,6 +141,8 @@ const App = {
       });
     }
   },
+
+
 
   initDarkMode() {
     const saved = localStorage.getItem('wms-darkmode');

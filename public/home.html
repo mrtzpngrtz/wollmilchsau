@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WOLLMILCHSAU</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/home.css">
+</head>
+<body>
+
+  <!-- Top Bar (minimal) -->
+  <div id="topbar">
+    <div class="topbar-left">
+      <span class="brand-mark">●</span>
+      <span class="brand-name">WOLLMILCHSAU</span>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-darkmode" class="topbar-btn" title="Toggle Night Mode">◐</button>
+      <div class="topbar-separator"></div>
+      <a id="btn-admin" href="/admin" class="topbar-btn hidden" title="Admin Panel">ADMIN</a>
+      <div class="user-info">
+        <button id="btn-profile" class="user-name topbar-btn-user" title="Account settings"></button>
+        <button id="btn-logout" class="topbar-btn topbar-btn-logout" title="Logout">LOGOUT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boards Dashboard -->
+  <div id="boards-dashboard">
+    <div class="dashboard-inner">
+      <div class="dashboard-header">
+        <div class="dashboard-title">
+          <span class="brand-mark">●</span>
+          <span>WOLLMILCHSAU</span>
+        </div>
+        <div class="dashboard-subtitle">SELECT A BOARD TO OPEN</div>
+      </div>
+      <div class="dashboard-actions">
+        <button id="dashboard-new-board" class="dash-btn-new">+ NEW BOARD</button>
+        <button id="dashboard-import-board" class="dash-btn-new" style="background:none;border:var(--border);">↑ IMPORT JSON</button>
+        <input type="file" id="dashboard-import-input" accept=".json" style="display:none">
+      </div>
+      <div id="dashboard-grid"></div>
+      <div class="dashboard-footer">
+        <span class="dashboard-hint">Click a board to open · Hover for actions</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profile-modal" class="modal hidden">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <span class="modal-idx">◆</span>
+        <span>ACCOUNT</span>
+        <button class="modal-close" id="profile-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="profile-field-label">USERNAME</div>
+        <div class="profile-field-value" id="profile-username"></div>
+
+        <div class="profile-field-label">DISPLAY NAME</div>
+        <input type="text" id="profile-display-name" placeholder="Display name">
+
+        <div class="profile-field-label">EMAIL</div>
+        <input type="text" id="profile-email" placeholder="your@email.com" autocomplete="email">
+
+        <button class="btn-primary" id="profile-save" style="margin-bottom:20px">SAVE CHANGES</button>
+
+        <div class="profile-section-divider">CHANGE PASSWORD</div>
+        <input type="password" id="profile-cur-pw" placeholder="Current password" autocomplete="current-password">
+        <input type="password" id="profile-new-pw" placeholder="New password" autocomplete="new-password">
+        <input type="password" id="profile-new-pw2" placeholder="Confirm new password" autocomplete="new-password">
+        <button class="btn-primary" id="profile-pw-save">UPDATE PASSWORD</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/storage.js"></script>
+  <script src="/js/home.js"></script>
+</body>
+</html>

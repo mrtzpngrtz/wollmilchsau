@@ -241,7 +241,8 @@ const Storage = {
   },
 
   updateBoardName() {
-    document.getElementById('current-board-name').textContent = this.currentBoard;
+    const el = document.getElementById('current-board-name');
+    if (el) el.textContent = this.currentBoard;
     document.title = `WOLLMILCHSAU — ${this.currentBoard}`;
   },
 
@@ -545,8 +546,9 @@ const Storage = {
         card.appendChild(actions);
 
         card.addEventListener('click', () => {
-          this.load(board.name, isShared ? board.owner : null);
-          this.hideDashboard();
+          const params = new URLSearchParams({ board: board.name });
+          if (isShared) params.set('owner', board.owner);
+          window.location.href = '/canvas?' + params.toString();
         });
 
         grid.appendChild(card);
@@ -578,25 +580,12 @@ const Storage = {
       const name = await Dialog.prompt('Board name:', '', 'NEW BOARD');
       if (!name || !name.trim()) return;
       const cleanName = name.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-
-      Collab.leaveBoard();
-      App.elements = [];
-      App.connections = [];
-      this.currentBoard = cleanName;
-      this.updateBoardName();
-      Elements.clearSelection();
-      Elements.renderAll();
-      Connections.render();
-      Canvas.panX = window.innerWidth / 2;
-      Canvas.panY = (window.innerHeight - 40) / 2;
-      Canvas.zoom = 1;
-      Canvas.updateTransform();
-      Canvas.drawGrid();
-      Canvas.updateMinimap();
-      History.clear();
-      History.push({ elements: [], connections: [] });
-      this.save(cleanName);
-      this.hideDashboard();
+      await fetch(`/api/boards/${encodeURIComponent(cleanName)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ elements: [], connections: [], viewport: { panX: 0, panY: 0, zoom: 1 } }),
+      });
+      window.location.href = `/canvas?board=${encodeURIComponent(cleanName)}`;
     });
   },
 

@@ -10,8 +10,11 @@ const DragDrop = {
     const dropZone = document.getElementById('drop-zone');
     let dragCounter = 0;
 
+    const isDashboardOpen = () => !document.getElementById('boards-dashboard').classList.contains('hidden');
+
     document.addEventListener('dragenter', (e) => {
       e.preventDefault();
+      if (isDashboardOpen()) return;
       dragCounter++;
       dropZone.classList.remove('hidden');
     });
@@ -33,6 +36,8 @@ const DragDrop = {
       e.preventDefault();
       dropZone.classList.add('hidden');
       dragCounter = 0;
+
+      if (isDashboardOpen()) return;
 
       const files = Array.from(e.dataTransfer.files);
       if (files.length === 0) return;

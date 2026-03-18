@@ -37,6 +37,7 @@ const Properties = {
     `;
 
     if (data.type === 'text' || data.type === 'heading') {
+      const ta = data.textAlign || 'left';
       html += `
         <div class="prop-group">
           <div class="prop-label">02 — SIZE</div>
@@ -50,6 +51,18 @@ const Properties = {
           <div class="prop-label">03 — COLOR</div>
           <div class="color-row">
             ${Utils.ELEMENT_COLORS.map(c => `<div class="color-option ${data.color === c ? 'active' : ''}" style="background:${c}" data-color="${c}" data-prop="color"></div>`).join('')}
+          </div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-label">04 — FORMAT</div>
+          <div class="fmt-row">
+            <button class="fmt-btn" data-cmd="bold"      title="Bold"><b>B</b></button>
+            <button class="fmt-btn" data-cmd="italic"    title="Italic"><i>I</i></button>
+            <button class="fmt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+            <div class="fmt-sep"></div>
+            <button class="fmt-btn fmt-align ${ta==='left'   ? 'active':''}" data-align="left"   title="Align left">&#8676;</button>
+            <button class="fmt-btn fmt-align ${ta==='center' ? 'active':''}" data-align="center" title="Center">&#8596;</button>
+            <button class="fmt-btn fmt-align ${ta==='right'  ? 'active':''}" data-align="right"  title="Align right">&#8677;</button>
           </div>
         </div>
       `;
@@ -267,6 +280,32 @@ const Properties = {
           Elements.updateElement(data.id, { fontWeight: opt.dataset.weight });
         }
         this.show(Elements.getData(data.id));
+        App.saveState();
+      });
+    });
+
+    // Bind format buttons (B/I/U) — mousedown+preventDefault keeps focus in contenteditable
+    content.querySelectorAll('.fmt-btn[data-cmd]').forEach(btn => {
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const editable = Elements.getDom(data.id)?.querySelector('[contenteditable="true"]');
+        if (!editable) return;
+        document.execCommand(btn.dataset.cmd, false, null);
+        // Save formatted content
+        const d = Elements.getData(data.id);
+        if (d) {
+          d.content = Elements.sanitizeContent(editable.innerHTML);
+          App.saveState();
+        }
+      });
+    });
+
+    // Bind alignment buttons
+    content.querySelectorAll('.fmt-btn[data-align]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        Elements.updateElement(data.id, { textAlign: btn.dataset.align });
+        // Update active state without full re-render
+        content.querySelectorAll('.fmt-btn[data-align]').forEach(b => b.classList.toggle('active', b === btn));
         App.saveState();
       });
     });

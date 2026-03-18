@@ -48,6 +48,7 @@ const Elements = {
         defaults.content = extra.content || '';
         defaults.fontSize = 14;
         defaults.boxed = extra.boxed || false;
+        defaults.textAlign = extra.textAlign || 'left';
         break;
       case 'heading':
         defaults.width = 500;
@@ -135,6 +136,7 @@ const Elements = {
         inner.innerHTML = data.content || '';
         inner.style.fontSize = (data.fontSize || 14) + 'px';
         inner.style.color = data.color || '#111111';
+        inner.style.textAlign = data.textAlign || 'left';
         el.appendChild(inner);
         break;
 
@@ -501,9 +503,10 @@ const Elements = {
 
     if (data.type === 'text') {
       const textEl = dom.querySelector('.el-text');
-      if (props.content !== undefined) textEl.textContent = props.content;
+      if (props.content !== undefined) textEl.innerHTML = props.content;
       if (props.fontSize !== undefined) textEl.style.fontSize = props.fontSize + 'px';
       if (props.color !== undefined) textEl.style.color = props.color;
+      if (props.textAlign !== undefined) textEl.style.textAlign = props.textAlign;
     }
     if (data.type === 'heading') {
       const headingEl = dom.querySelector('.el-heading');
@@ -571,6 +574,10 @@ const Elements = {
       if (e.button !== 0) return;
 
       const target = e.target;
+
+      // Don't interfere with active text editing (allow cursor placement + text selection)
+      if (target.closest('[contenteditable="true"]')) return;
+
       const elementDom = target.closest('.canvas-element');
       const tool = App.currentTool;
 
@@ -999,11 +1006,14 @@ const Elements = {
     editable.setAttribute('contenteditable', 'true');
     editable.focus();
 
-    const range = document.createRange();
-    range.selectNodeContents(editable);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
+    // Select all only for empty elements; otherwise leave cursor where user clicked
+    if (!editable.textContent.trim()) {
+      const range = document.createRange();
+      range.selectNodeContents(editable);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
 
     const stopEditing = () => {
       editable.removeAttribute('contenteditable');

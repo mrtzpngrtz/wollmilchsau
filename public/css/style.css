@@ -1497,6 +1497,45 @@ body.dark .draw-opt-style.active { border-color: #E8E8E8; }
   border-color: var(--black);
 }
 
+.fmt-row {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.fmt-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border-color, #ccc);
+  margin: 0 3px;
+}
+
+.fmt-btn {
+  width: 28px;
+  height: 26px;
+  border: var(--border);
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--black);
+  padding: 0;
+  user-select: none;
+}
+
+.fmt-btn:hover {
+  background: var(--light-grey);
+}
+
+.fmt-btn.active {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
 .color-option {
   width: 18px;
   height: 18px;

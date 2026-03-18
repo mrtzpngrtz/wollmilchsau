@@ -294,13 +294,20 @@ const Elements = {
         break;
     }
 
-    // Connection anchors
-    ['top', 'bottom', 'left', 'right'].forEach(pos => {
-      const anchor = document.createElement('div');
-      anchor.className = 'connection-anchor ' + pos;
-      anchor.dataset.anchor = pos;
-      el.appendChild(anchor);
-    });
+    // Connection anchors — pins get a single center ring anchor, others get 4 edge anchors
+    if (data.type === 'pin') {
+      const ring = document.createElement('div');
+      ring.className = 'connection-anchor pin-ring';
+      ring.dataset.anchor = 'center';
+      el.appendChild(ring);
+    } else {
+      ['top', 'bottom', 'left', 'right'].forEach(pos => {
+        const anchor = document.createElement('div');
+        anchor.className = 'connection-anchor ' + pos;
+        anchor.dataset.anchor = pos;
+        el.appendChild(anchor);
+      });
+    }
 
     Canvas.canvasEl.appendChild(el);
     return el;

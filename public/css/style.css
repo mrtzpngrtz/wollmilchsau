@@ -2291,6 +2291,28 @@ body.dark #suggestion-submit:hover {
   left: 5px;
 }
 
+/* Pin ring anchor — covers and surrounds the pin, acts as connect handle */
+.connection-anchor.pin-ring {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px dashed rgba(180, 0, 0, 0.0);
+  background: transparent;
+  opacity: 0;
+  cursor: crosshair;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.canvas-element:hover .connection-anchor.pin-ring,
+.canvas-element.selected .connection-anchor.pin-ring {
+  opacity: 1;
+  border-color: rgba(200, 0, 0, 0.55);
+}
+
 .connection-label {
   fill: var(--dark-grey);
   font-family: var(--font-mono);

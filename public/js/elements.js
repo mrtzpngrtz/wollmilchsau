@@ -1012,6 +1012,9 @@ const Elements = {
       if (data.type === 'file' && data.url) {
         FileViewer.open(data);
       }
+      if (data.type === 'image' && data.url) {
+        FileViewer.open({ url: data.url, mimetype: 'image/', originalName: data.originalName || 'image', fileSize: 0 });
+      }
       // todo double-click is handled by Todos.bindEvents
     });
 

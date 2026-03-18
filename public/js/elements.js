@@ -639,6 +639,29 @@ const Elements = {
           const data = this.getData(id);
           if (data && data.locked) return;
 
+          // Pins: drag to draw thread, Shift+drag to move
+          if (data.type === 'pin' && !e.shiftKey) {
+            if (!this.selected.includes(id)) this.select(id);
+            const pinStartX = e.clientX, pinStartY = e.clientY;
+            let connectionStarted = false;
+            const onPinMove = (ev) => {
+              if (connectionStarted) return;
+              if (Math.hypot(ev.clientX - pinStartX, ev.clientY - pinStartY) > 4) {
+                connectionStarted = true;
+                window.removeEventListener('mousemove', onPinMove);
+                window.removeEventListener('mouseup', onPinUp);
+                Connections.startDrawing(id, 'center', ev);
+              }
+            };
+            const onPinUp = () => {
+              window.removeEventListener('mousemove', onPinMove);
+              window.removeEventListener('mouseup', onPinUp);
+            };
+            window.addEventListener('mousemove', onPinMove);
+            window.addEventListener('mouseup', onPinUp);
+            return;
+          }
+
           if (e.shiftKey) {
             this.select(id, true);
           } else if (data.groupId && !this.selected.includes(id)) {

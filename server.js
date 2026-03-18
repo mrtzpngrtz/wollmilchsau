@@ -133,6 +133,7 @@ function requireAdmin(req, res, next) {
 // Static assets (publicly accessible)
 app.use('/css', express.static(path.join(__dirname, 'public/css')));
 app.use('/js', express.static(path.join(__dirname, 'public/js')));
+app.get('/favicon.svg', (req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
 app.use('/uploads', requireAuth, express.static(path.join(__dirname, 'uploads')));
 
 // ═══════════════════════════════════════════════════════

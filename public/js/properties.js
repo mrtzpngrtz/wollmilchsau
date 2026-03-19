@@ -114,6 +114,19 @@ const Properties = {
       `;
     }
 
+    if (data.type === 'icon') {
+      html += `
+        <div class="prop-group">
+          <div class="prop-label">02 — SIZE</div>
+          <div class="prop-slider-row">
+            <span class="prop-slider-label">Aa</span>
+            <input class="prop-slider" type="range" data-prop="fontSize" value="${data.fontSize || 48}" min="16" max="256" />
+            <span class="prop-slider-value" data-display="fontSize">${data.fontSize || 48}</span>
+          </div>
+        </div>
+      `;
+    }
+
     if (data.type === 'image') {
       html += `
         <div class="prop-group">

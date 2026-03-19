@@ -90,6 +90,7 @@ const Elements = {
       case 'icon':
         defaults.width = 48;
         defaults.height = 48;
+        defaults.fontSize = 48;
         defaults.icon = extra.icon || '●';
         break;
       case 'todo':
@@ -246,6 +247,7 @@ const Elements = {
         inner = document.createElement('div');
         inner.className = 'el-icon';
         inner.textContent = data.icon;
+        inner.style.fontSize = (data.fontSize || 48) + 'px';
         el.appendChild(inner);
         el.style.width = 'auto';
         el.style.height = 'auto';
@@ -572,8 +574,10 @@ const Elements = {
         }
       }
     }
-    if (data.type === 'icon' && props.icon !== undefined) {
-      dom.querySelector('.el-icon').textContent = props.icon;
+    if (data.type === 'icon') {
+      const iconEl = dom.querySelector('.el-icon');
+      if (props.icon !== undefined) iconEl.textContent = props.icon;
+      if (props.fontSize !== undefined) iconEl.style.fontSize = props.fontSize + 'px';
     }
     if (data.type === 'image') {
       const imgEl = dom.querySelector('.el-image img');

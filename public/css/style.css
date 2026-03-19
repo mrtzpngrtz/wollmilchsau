@@ -1058,12 +1058,10 @@ body.dark .util-toast {
 
 /* --- Icon Element --- */
 .el-icon {
-  width: 48px;
-  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  line-height: 1;
   user-select: none;
 }
 

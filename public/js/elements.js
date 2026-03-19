@@ -610,9 +610,15 @@ const Elements = {
 
       if (target.classList.contains('connection-anchor')) {
         const parentEl = target.closest('.canvas-element');
-        const anchor = target.dataset.anchor;
-        Connections.startDrawing(parentEl.dataset.id, anchor, e);
-        return;
+        const parentData = this.getData(parentEl.dataset.id);
+        // Shift+drag on a pin-ring should move the pin, not draw a connection
+        if (e.shiftKey && parentData && parentData.type === 'pin') {
+          // fall through to normal drag logic below
+        } else {
+          const anchor = target.dataset.anchor;
+          Connections.startDrawing(parentEl.dataset.id, anchor, e);
+          return;
+        }
       }
 
       if (target.classList.contains('resize-handle')) {

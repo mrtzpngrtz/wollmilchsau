@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WOLLMILCHSAU — Shared Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── SHARE-SPECIFIC ── */
+    .share-badge {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 2px 7px;
+    }
+
+    #share-board-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      color: var(--dark-grey);
+    }
+
+    /* ── PASSWORD OVERLAY ── */
+    #share-password-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--off-white);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #share-password-overlay.hidden { display: none; }
+
+    .share-password-box {
+      width: 320px;
+      border: var(--border);
+      background: var(--white);
+      padding: 32px;
+    }
+
+    .share-password-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 24px;
+      color: var(--black);
+    }
+
+    #share-password-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #share-password-input {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 10px 12px;
+      border: var(--border-light);
+      background: var(--white);
+      color: var(--black);
+      outline: none;
+      width: 100%;
+    }
+    #share-password-input:focus { border-color: var(--black); }
+
+    #share-password-form button[type="submit"] {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      background: var(--black);
+      color: var(--white);
+      border: none;
+      padding: 11px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    #share-password-form button[type="submit"]:hover { background: var(--accent); }
+
+    #share-password-error {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+    #share-password-error.hidden { display: none; }
+
+    body.dark #share-password-input { background: #252525; color: #E0E0E0; }
+    body.dark #share-password-form button[type="submit"] { background: #E8E8E8; color: #111; }
+    body.dark #share-password-form button[type="submit"]:hover { background: #FF5722; color: #FFF; }
+
+    /* ── ERROR STATE ── */
+    #share-error {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    #share-error.hidden { display: none; }
+    .share-error-box {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--dark-grey);
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .share-error-box b { display: block; font-size: 18px; color: var(--accent); margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <!-- Top Bar -->
+  <div id="topbar">
+    <div class="topbar-left">
+      <span class="brand-mark">●</span>
+      <span class="brand-name">WOLLMILCHSAU</span>
+      <span class="topbar-separator"></span>
+      <span id="share-board-title">—</span>
+    </div>
+    <div class="topbar-center">
+      <div class="zoom-control">
+        <button id="zoom-out" title="Zoom Out">−</button>
+        <span id="zoom-level">100</span>
+        <span class="zoom-unit">%</span>
+        <button id="zoom-in" title="Zoom In">+</button>
+        <button id="zoom-fit" title="Fit All">FIT</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-coord" id="cursor-coord">0, 0</span>
+      <div class="topbar-separator"></div>
+      <button id="btn-darkmode" class="topbar-btn" title="Toggle Night Mode">◐</button>
+      <div class="topbar-separator"></div>
+      <span class="share-badge">READ ONLY</span>
+    </div>
+  </div>
+
+  <!-- Canvas container -->
+  <div id="canvas-container">
+    <svg id="grid-svg"></svg>
+    <svg id="connections-svg"></svg>
+    <svg id="preview-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:8999;overflow:hidden;"></svg>
+    <div id="canvas"></div>
+    <div id="selection-box" class="hidden"></div>
+  </div>
+
+  <!-- Minimap -->
+  <div id="minimap">
+    <div class="minimap-label">MAP</div>
+    <canvas id="minimap-canvas" width="200" height="140"></canvas>
+    <div id="minimap-viewport"></div>
+  </div>
+
+  <!-- Password Overlay -->
+  <div id="share-password-overlay" class="hidden">
+    <div class="share-password-box">
+      <div class="share-password-title">BOARD IS PASSWORD PROTECTED</div>
+      <form id="share-password-form">
+        <input type="password" id="share-password-input" placeholder="ENTER PASSWORD..." autocomplete="off" autofocus />
+        <button type="submit">OPEN →</button>
+        <div id="share-password-error" class="hidden">Wrong password</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div id="share-error" class="hidden">
+    <div class="share-error-box">
+      <b>404</b>
+      BOARD NOT FOUND OR SHARING DISABLED
+    </div>
+  </div>
+
+  <!-- Stubs for JS modules not loaded in share mode -->
+  <!-- Note: utils.js (Dialog) and history.js (History) are loaded below — do NOT stub them here -->
+  <script>
+    const App = {
+      elements: [], connections: [], currentTool: 'pan', currentUser: null,
+      activeFilters: new Set(),
+      READ_ONLY: true,
+      saveState() {},
+      setTool() {},
+    };
+    const Properties = {
+      currentId: null,
+      show() {}, hide() {}, positionPopup() {}, updatePosition() {},
+    };
+    const Storage = { currentBoard: '', currentBoardOwner: null };
+    const Collab = {
+      broadcastState() {}, leaveBoard() {},
+      _repositionAllCursors() {},
+    };
+    const Toolbar = { init() {} };
+    const ContextMenu = { init() {}, show() {}, hide() {} };
+    const DrawOptions = { init() {}, toggle() {}, _syncUI() {} };
+    const IconPicker = { init() {}, show() {} };
+    const FileViewer = { init() {}, open() {} };
+    const Suggestions = { init() {} };
+    const DragDrop = { init() {} };
+  </script>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/history.js"></script>
+  <script src="/js/canvas.js"></script>
+  <script src="/js/todos.js"></script>
+  <script src="/js/llmchat.js"></script>
+  <script src="/js/elements.js"></script>
+  <script src="/js/connections.js"></script>
+  <script src="/js/share.js"></script>
+</body>
+</html>

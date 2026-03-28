@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WOLLMILCHSAU — Canvas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div id="topbar">
+    <div class="topbar-left">
+      <span class="brand-mark">●</span>
+      <span class="brand-name">WOLLMILCHSAU</span>
+      <span class="topbar-separator"></span>
+      <div id="board-switcher">
+        <button id="board-switcher-btn" title="Switch Board">
+          <span id="current-board-name">default</span>
+          <span class="board-arrow">▾</span>
+        </button>
+        <div id="board-dropdown" class="hidden">
+          <div class="board-dropdown-header">
+            <span>BOARDS</span>
+            <button id="new-board-btn" title="New Board">+ NEW</button>
+          </div>
+          <div id="board-dropdown-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-center">
+      <div class="zoom-control">
+        <button id="zoom-out" title="Zoom Out">−</button>
+        <span id="zoom-level">100</span>
+        <span class="zoom-unit">%</span>
+        <button id="zoom-in" title="Zoom In">+</button>
+        <button id="zoom-fit" title="Fit All (Ctrl+0)">FIT</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-coord" id="cursor-coord">0, 0</span>
+      <div class="topbar-separator"></div>
+      <div id="collab-presence" class="collab-presence" style="display:none"></div>
+      <div class="topbar-separator"></div>
+      <button id="btn-darkmode" class="topbar-btn" title="Toggle Night Mode">◐</button>
+      <div class="topbar-separator"></div>
+      <button id="btn-undo" class="topbar-btn" title="Undo (Ctrl+Z)">↩</button>
+      <button id="btn-redo" class="topbar-btn" title="Redo (Ctrl+Shift+Z)">↪</button>
+      <div class="topbar-separator"></div>
+      <button id="btn-save" class="topbar-btn" title="Save (Ctrl+S)">SAVE</button>
+      <button id="btn-load" class="topbar-btn" title="Load (Ctrl+O)">LOAD</button>
+      <div class="topbar-separator"></div>
+      <a id="btn-admin" href="/admin" class="topbar-btn hidden" title="Admin Panel">ADMIN</a>
+      <div class="user-info">
+        <span id="collab-status-dot" class="collab-status-dot" title="Connecting..."></span>
+        <button id="btn-profile" class="user-name topbar-btn-user" title="Account settings"></button>
+        <button id="btn-logout" class="topbar-btn topbar-btn-logout" title="Logout">LOGOUT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vertical Tool Panel (Moveable) -->
+  <div id="toolbar" style="left:16px;top:64px;">
+    <div class="toolbar-drag-handle" id="toolbar-handle">
+      <span class="handle-dots">⠿</span>
+    </div>
+    <div class="toolbar-section">
+      <div class="toolbar-section-label">01 — SELECT</div>
+      <button class="tool-btn active" data-tool="select" title="Select (V)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="pan" title="Pan (H)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3"/></svg>
+      </button>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-section">
+      <div class="toolbar-section-label">02 — CREATE</div>
+      <button class="tool-btn" data-tool="text" title="Text (T)">
+        <span class="tool-letter">T</span>
+      </button>
+      <button class="tool-btn" data-tool="heading" title="Heading (E)">
+        <span class="tool-letter" style="font-weight:900;font-size:11px;">H1</span>
+      </button>
+      <button class="tool-btn" data-tool="note" title="Note (N)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18"/><path d="M14 3v7h7"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="image" title="Image (I)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="file" title="File (F)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6v20h12V8z"/><path d="M14 2v6h6"/></svg>
+      </button>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-section">
+      <div class="toolbar-section-label">03 — SHAPE</div>
+      <button class="tool-btn" data-tool="rect" title="Rectangle (R)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="circle" title="Circle (C)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="arrow" title="Arrow (A)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="icon" title="Icon (G)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-section">
+      <div class="toolbar-section-label">04 — LISTS</div>
+      <button class="tool-btn" data-tool="todo" title="Todo List (D)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 7h6M9 12h6M9 17h4"/><path d="M6 7h0M6 12h0M6 17h0"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="draw" title="Draw (P)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+      </button>
+      <button class="tool-btn" data-tool="pin" title="Pin (K)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4" fill="#CC1111" stroke="#CC1111"/>
+          <line x1="12" y1="12" x2="12" y2="21" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="toolbar-meta">
+      <span class="meta-coord">48°08'N</span>
+      <span class="meta-coord">11°34'E</span>
+    </div>
+  </div>
+
+  <!-- Draw Options Bar (shown when draw tool is active) -->
+  <div id="draw-options" class="hidden">
+    <div class="draw-opt-group">
+      <div class="draw-opt-label">COLOR</div>
+      <div class="draw-opt-colors" id="draw-opt-colors"></div>
+    </div>
+    <div class="draw-opt-sep"></div>
+    <div class="draw-opt-group">
+      <div class="draw-opt-label">SIZE</div>
+      <div class="draw-opt-sizes">
+        <div class="draw-opt-size" data-size="1"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-size" data-size="2"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-size" data-size="4"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-size" data-size="8"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-size" data-size="16"><svg width="20" height="12"><line x1="2" y1="6" x2="18" y2="6" stroke="currentColor" stroke-width="12" stroke-linecap="round"/></svg></div>
+      </div>
+    </div>
+    <div class="draw-opt-sep"></div>
+    <div class="draw-opt-group">
+      <div class="draw-opt-label">STROKE</div>
+      <div class="draw-opt-styles">
+        <div class="draw-opt-style active" data-style="solid"><svg width="32" height="12"><line x1="2" y1="6" x2="30" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div class="draw-opt-style" data-style="dashed"><svg width="32" height="12"><line x1="2" y1="6" x2="30" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="6,4"/></svg></div>
+        <div class="draw-opt-style" data-style="dotted"><svg width="32" height="12"><line x1="2" y1="6" x2="30" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="2,4"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas container -->
+  <div id="canvas-container">
+    <svg id="grid-svg"></svg>
+    <svg id="connections-svg"></svg>
+    <svg id="preview-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:8999;overflow:hidden;"></svg>
+    <div id="canvas"></div>
+    <div id="selection-box" class="hidden"></div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="context-menu" class="hidden">
+    <div class="ctx-item" data-action="duplicate"><span class="ctx-idx">01</span> Duplicate</div>
+    <div class="ctx-item" data-action="copy"><span class="ctx-idx">02</span> Copy</div>
+    <div class="ctx-item hidden" id="ctx-copy-image" data-action="copy-image"><span class="ctx-idx">↑</span> Copy Image</div>
+    <div class="ctx-item" data-action="paste"><span class="ctx-idx">03</span> Paste</div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item" data-action="bring-front"><span class="ctx-idx">04</span> Bring to Front</div>
+    <div class="ctx-item" data-action="send-back"><span class="ctx-idx">05</span> Send to Back</div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item" data-action="lock"><span class="ctx-idx">06</span> Lock / Unlock</div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item" data-action="group"><span class="ctx-idx">07</span> Group</div>
+    <div class="ctx-item" data-action="ungroup"><span class="ctx-idx">08</span> Ungroup</div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item ctx-danger" data-action="delete"><span class="ctx-idx">09</span> Delete</div>
+  </div>
+
+  <!-- Properties Panel -->
+  <div id="properties-panel" class="hidden">
+    <div class="panel-header">
+      <span class="panel-title">PROPERTIES</span>
+      <span class="panel-meta">ACTIVE</span>
+      <button id="close-properties">✕</button>
+    </div>
+    <div id="props-content"></div>
+  </div>
+
+  <!-- File Viewer Modal -->
+  <div id="file-viewer" class="modal hidden">
+    <div class="modal-content file-viewer-content">
+      <div class="modal-header">
+        <span class="modal-idx">◻</span>
+        <span id="file-viewer-title" class="file-viewer-title"></span>
+        <div class="file-viewer-actions">
+          <a id="file-viewer-download" class="topbar-btn" download title="Download file">↓ DOWNLOAD</a>
+          <a id="file-viewer-open" class="topbar-btn" target="_blank" title="Open in new tab">↗ VIEW</a>
+          <button class="modal-close" id="file-viewer-close">✕</button>
+        </div>
+      </div>
+      <div class="file-viewer-body" id="file-viewer-body"></div>
+    </div>
+  </div>
+
+  <!-- Icon Picker Modal -->
+  <div id="icon-picker" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-idx">01</span>
+        <span>ICON LIBRARY</span>
+        <button class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="icon-search" placeholder="SEARCH..." />
+        <div id="icon-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save/Load Modal -->
+  <div id="save-modal" class="modal hidden">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <span class="modal-idx">02</span>
+        <span id="save-modal-title">SAVE BOARD</span>
+        <button class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="board-name-input" placeholder="BOARD NAME..." />
+        <div id="board-list"></div>
+        <button id="save-confirm" class="btn-primary">SAVE →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestions Trigger -->
+  <button id="suggestions-trigger" title="Feature Requests"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6 3.993c1.664-1.711 5.825 1.283 0 5.132-5.825-3.85-1.664-6.843 0-5.132"/></svg></button>
+
+  <!-- Suggestions Lightbox -->
+  <div id="suggestions-lightbox" class="modal hidden">
+    <div class="modal-content suggestions-modal">
+      <div class="modal-header">
+        <span class="modal-idx">●</span>
+        <span>FEATURE REQUESTS</span>
+        <button class="modal-close" id="suggestions-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="suggestions-list" class="suggestions-list-lb"></div>
+      </div>
+      <div class="suggestions-footer">
+        <input type="text" id="suggestion-input" placeholder="Describe your idea..." />
+        <button id="suggestion-submit">→</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Minimap -->
+  <div id="minimap">
+    <div class="minimap-label">MAP</div>
+    <canvas id="minimap-canvas" width="200" height="140"></canvas>
+    <div id="minimap-viewport"></div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profile-modal" class="modal hidden">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <span class="modal-idx">◆</span>
+        <span>ACCOUNT</span>
+        <button class="modal-close" id="profile-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="profile-field-label">USERNAME</div>
+        <div class="profile-field-value" id="profile-username"></div>
+
+        <div class="profile-field-label">DISPLAY NAME</div>
+        <input type="text" id="profile-display-name" placeholder="Display name">
+
+        <div class="profile-field-label">EMAIL</div>
+        <input type="text" id="profile-email" placeholder="your@email.com" autocomplete="email">
+
+        <button class="btn-primary" id="profile-save" style="margin-bottom:20px">SAVE CHANGES</button>
+
+        <div class="profile-section-divider">CHANGE PASSWORD</div>
+        <input type="password" id="profile-cur-pw" placeholder="Current password" autocomplete="current-password">
+        <input type="password" id="profile-new-pw" placeholder="New password" autocomplete="new-password">
+        <input type="password" id="profile-new-pw2" placeholder="Confirm new password" autocomplete="new-password">
+        <button class="btn-primary" id="profile-pw-save">UPDATE PASSWORD</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boards Overview Dashboard -->
+  <div id="boards-dashboard" class="hidden">
+    <div class="dashboard-inner">
+      <div class="dashboard-header">
+        <div class="dashboard-title">
+          <span class="brand-mark">●</span>
+          <span>WOLLMILCHSAU</span>
+        </div>
+        <div class="dashboard-subtitle">SELECT A BOARD TO OPEN</div>
+      </div>
+      <div class="dashboard-actions">
+        <button id="dashboard-new-board" class="dash-btn-new">+ NEW BOARD</button>
+        <button id="dashboard-import-board" class="dash-btn-new" style="background:none;border:var(--border);color:var(--black);">↑ IMPORT JSON</button>
+        <input type="file" id="dashboard-import-input" accept=".json" style="display:none">
+      </div>
+      <div id="dashboard-grid"></div>
+      <div class="dashboard-footer">
+        <span class="dashboard-hint">Click a board to open · Hover for actions</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drop zone overlay -->
+  <div id="drop-zone" class="hidden">
+    <div class="drop-zone-inner">
+      <span class="drop-icon">+</span>
+      <span class="drop-text">DROP FILES HERE</span>
+    </div>
+  </div>
+
+  <!-- Hidden file input -->
+  <input type="file" id="file-input" multiple accept="image/*,.pdf,.doc,.docx,.txt,.svg" class="hidden" />
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/history.js"></script>
+  <script src="/js/canvas.js"></script>
+  <script src="/js/todos.js"></script>
+  <script src="/js/elements.js"></script>
+  <script src="/js/properties.js"></script>
+  <script src="/js/drawoptions.js"></script>
+  <script src="/js/contextmenu.js"></script>
+  <script src="/js/connections.js"></script>
+  <script src="/js/toolbar.js"></script>
+  <script src="/js/storage.js"></script>
+  <script src="/js/dragdrop.js"></script>
+  <script src="/js/iconpicker.js"></script>
+  <script src="/js/viewer.js"></script>
+  <script src="/js/suggestions.js"></script>
+  <script src="/js/collab.js"></script>
+  <script src="/js/app.js"></script>
+  <div id="upload-progress-stack"></div>
+</body>
+</html>

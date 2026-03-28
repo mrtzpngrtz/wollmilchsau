@@ -1,0 +1,90 @@
+# WOLLMILCHSAU
+
+Infinite canvas that can do it all.
+
+![Screenshot](screenshot.png)
+
+## Features
+
+### Canvas
+- **Infinite Canvas** — Pan, zoom, dot grid, minimap
+- **Night Mode** — Full dark theme toggle, persisted per browser
+- **Undo/Redo** — Ctrl+Z / Ctrl+Shift+Z, 50-step history
+- **Auto-save** — Every 30s + on navigation, JSON-based persistence
+- **Export** — PNG snapshot of the canvas
+
+### Elements
+- **Text & Headings** — Inline editing, font size, color, alignment, bold/italic/underline
+- **Notes** — Sticky notes with color accents (default, blue, green, pink, purple, orange)
+- **Images** — Drag & drop upload, resize, zoom, crop (top/right/bottom/left), rotation
+- **Files** — Upload & attach files (PDF, video with thumbnail, docs)
+- **Shapes** — Rectangles and circles with border + fill color
+- **Freehand Draw** — Brush tool with color, size, solid/dashed/dotted stroke
+- **Icons & Emoji** — Picker with search, scalable via drag
+- **Todo Lists** — Checklist elements with item assignment, inline editing
+- **Pins** — Anchor markers on the canvas
+- **LLM Chat** — AI chat window connected to Anthropic, OpenAI, Google, or OpenRouter
+
+### Connections
+- **Arrows** — Connect any two elements; straight, curved, or threaded style
+- **Wide hit areas** — Easy to click and grab lines
+
+### Boards
+- **Multiple Boards** — Create, rename, switch, delete
+- **Board Sharing** — Generate a shareable link; optional password protection; read-only public view
+- **Collaboration** — Real-time multi-user editing via WebSocket
+- **Import/Export** — Download and upload board JSON
+
+### Users & Settings
+- **User Accounts** — Login, registration (toggleable by admin)
+- **Profile Settings** — Display name, email, password change
+- **LLM Settings** — Provider (Anthropic / OpenAI / Google / OpenRouter), API key, default model, system prompt
+- **Statistics** — Per-board element counts and type breakdown
+- **Admin Panel** — User management, board overview, feature request inbox
+
+### Keyboard Shortcuts
+
+| Key | Tool |
+|-----|------|
+| V | Select |
+| H | Pan |
+| T | Text |
+| E | Heading |
+| N | Note |
+| R | Rectangle |
+| C | Circle |
+| A | Arrow |
+| D | Todo |
+| P | Draw |
+| K | Pin |
+| G | Icon |
+| L | LLM Chat |
+| Space | Pan (hold) |
+| Ctrl+Z | Undo |
+| Ctrl+Shift+Z | Redo |
+| Ctrl+S | Save |
+| Ctrl+0 | Fit all |
+
+## UX & Design Philosophy
+
+The core of **WOLLMILCHSAU** is built around an uncompromising focus on flow, immediacy, and spatial freedom:
+
+- **Unobtrusive Interface:** The UI gets out of the way. Tools and properties only appear contextually when needed, maximising the space for ideas on the infinite canvas.
+- **Immediate Feedback:** Every action feels instantaneous because we rely on fast Vanilla JS and native DOM/SVG manipulations instead of heavy frameworks.
+- **Keyboard-First Workflow:** Single-key shortcuts for every tool and robust undo/redo let you think and map ideas at the speed of thought.
+- **Visual Comfort:** Night Mode and a subtle dot grid provide structure without causing eye strain during long sessions.
+
+## Setup
+
+```bash
+npm install
+node server.js
+```
+
+Open [http://localhost:3000](http://localhost:3000)
+
+Default admin credentials: `admin` / `admin` — change immediately.
+
+## Stack
+
+Node.js + Express · Vanilla JS · SVG · WebSocket · bcrypt · No build tools

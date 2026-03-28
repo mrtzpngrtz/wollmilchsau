@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WOLLMILCHSAU — Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/settings.css">
+</head>
+<body>
+
+  <div id="topbar">
+    <div class="topbar-left">
+      <span class="brand-mark">●</span>
+      <a href="/" class="brand-name">WOLLMILCHSAU</a>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-darkmode" class="topbar-btn" title="Toggle Night Mode">◐</button>
+      <div class="topbar-separator"></div>
+      <a id="btn-admin" href="/admin" class="topbar-btn hidden">ADMIN</a>
+      <span id="topbar-username" class="topbar-btn" style="color:var(--black);font-weight:600"></span>
+      <button id="btn-logout" class="topbar-btn topbar-btn-logout">LOGOUT</button>
+    </div>
+  </div>
+
+  <div id="settings-layout">
+
+    <nav id="settings-nav">
+      <div class="nav-label">SETTINGS</div>
+      <a class="nav-item active" data-section="profile" href="#">
+        <span class="nav-idx">01</span> PROFILE
+      </a>
+      <a class="nav-item" data-section="llm" href="#">
+        <span class="nav-idx">02</span> LLM
+      </a>
+      <a class="nav-item" data-section="stats" href="#">
+        <span class="nav-idx">03</span> STATISTICS
+      </a>
+    </nav>
+
+    <main id="settings-main">
+
+      <!-- ── PROFILE ── -->
+      <section id="section-profile" class="settings-section active">
+        <div class="section-header">
+          <span class="section-idx">01</span>
+          <h1>PROFILE</h1>
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label">USERNAME</label>
+          <div class="settings-value" id="s-username"></div>
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="s-display-name">DISPLAY NAME</label>
+          <input type="text" id="s-display-name" placeholder="Display name">
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="s-email">EMAIL</label>
+          <input type="email" id="s-email" placeholder="your@email.com" autocomplete="email">
+        </div>
+
+        <button class="btn-save" id="profile-save">SAVE PROFILE →</button>
+
+        <div class="settings-divider">CHANGE PASSWORD</div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="s-cur-pw">CURRENT PASSWORD</label>
+          <input type="password" id="s-cur-pw" autocomplete="current-password">
+        </div>
+        <div class="settings-group">
+          <label class="settings-label" for="s-new-pw">NEW PASSWORD</label>
+          <input type="password" id="s-new-pw" autocomplete="new-password">
+        </div>
+        <div class="settings-group">
+          <label class="settings-label" for="s-new-pw2">CONFIRM NEW PASSWORD</label>
+          <input type="password" id="s-new-pw2" autocomplete="new-password">
+        </div>
+
+        <button class="btn-save btn-secondary" id="pw-save">UPDATE PASSWORD →</button>
+      </section>
+
+      <!-- ── LLM ── -->
+      <section id="section-llm" class="settings-section">
+        <div class="section-header">
+          <span class="section-idx">02</span>
+          <h1>LLM</h1>
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="s-llm-provider">PROVIDER</label>
+          <select id="s-llm-provider">
+            <option value="">— not configured —</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI (GPT)</option>
+            <option value="google">Google (Gemini)</option>
+            <option value="openrouter">OpenRouter</option>
+          </select>
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="s-llm-model">DEFAULT MODEL</label>
+          <input type="text" id="s-llm-model" placeholder="e.g. claude-sonnet-4-6, gpt-4o, gemini-2.0-flash">
+          <div class="settings-hint">Leave blank to use the provider's default model.</div>
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="s-llm-apikey">API KEY</label>
+          <input type="password" id="s-llm-apikey" placeholder="sk-…" autocomplete="off">
+          <div class="settings-hint" id="s-llm-configured"></div>
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="s-llm-system">SYSTEM PROMPT</label>
+          <textarea id="s-llm-system" rows="6" placeholder="You are a helpful assistant…"></textarea>
+          <div class="settings-hint">Applied to every LLM chat element on all boards.</div>
+        </div>
+
+        <button class="btn-save" id="llm-save">SAVE LLM SETTINGS →</button>
+      </section>
+
+      <!-- ── STATISTICS ── -->
+      <section id="section-stats" class="settings-section">
+        <div class="section-header">
+          <span class="section-idx">03</span>
+          <h1>STATISTICS</h1>
+        </div>
+
+        <div id="stats-summary" class="stats-summary"></div>
+
+        <div class="settings-divider">BOARDS</div>
+        <div id="stats-boards"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/settings.js"></script>
+</body>
+</html>

@@ -29,6 +29,8 @@ const Elements = {
   },
 
   create(type, x, y, extra = {}) {
+    const dark = document.body.classList.contains('dark');
+    const defaultColor = dark ? '#E8E8E8' : '#111111';
     const defaults = {
       id: Utils.id(),
       type,
@@ -37,8 +39,8 @@ const Elements = {
       height: 120,
       zIndex: ++this.maxZIndex,
       locked: false,
-      color: '#111111',
-      borderColor: '#111111',
+      color: defaultColor,
+      borderColor: defaultColor,
       ...extra,
     };
 

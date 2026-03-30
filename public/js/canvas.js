@@ -30,10 +30,10 @@ const Canvas = {
   bindEvents() {
     // Wheel zoom
     this.container.addEventListener('wheel', (e) => {
-      // Let scroll pass through to boxed text elements
-      const textEl = e.target.closest('.el-text--boxed');
-      if (textEl) {
-        textEl.scrollTop += e.deltaY;
+      // Let scroll pass through to scrollable inner elements
+      const scrollable = e.target.closest('.el-text--boxed, .todo-items, .cal-agenda');
+      if (scrollable) {
+        scrollable.scrollTop += e.deltaY;
         e.preventDefault();
         return;
       }

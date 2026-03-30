@@ -3672,6 +3672,7 @@ body.dark #profile-llm-provider {
   opacity: 0.4;
   color: var(--black);
 }
+.cal-agenda-day--past { opacity: 0.35; }
 
 .cal-dow {
   font-size: 8px;

@@ -95,7 +95,8 @@ const CalendarEl = {
           : 'All day';
         return `<div class="cal-agenda-ev"><span class="cal-agenda-time">${timeStr}</span><span class="cal-agenda-title">${Utils.escapeHtml(ev.title)}</span></div>`;
       }).join('');
-      return `<div class="cal-agenda-day${isToday ? ' cal-agenda-day--today' : ''}"><div class="cal-agenda-date">${dayLabel}</div>${evRows}</div>`;
+      const isPast = !isToday && dateStr < todayStr;
+      return `<div class="cal-agenda-day${isToday ? ' cal-agenda-day--today' : ''}${isPast ? ' cal-agenda-day--past' : ''}"><div class="cal-agenda-date">${dayLabel}</div>${evRows}</div>`;
     }).join('')}</div>`;
   },
 

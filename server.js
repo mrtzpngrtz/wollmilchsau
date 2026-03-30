@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
 const { WebSocketServer } = require('ws');
-const { authenticator } = require('otplib');
+const { generateSecret: totpGenerateSecret, generateSync: totpGenerateSync, verifySync: totpVerifySync, generateURI: totpGenerateURI } = require('otplib');
 const QRCode = require('qrcode');
 
 const app = express();
@@ -288,11 +288,11 @@ app.post('/api/auth/2fa/setup', requireAuth, async (req, res) => {
   if (!user) return res.status(404).json({ error: 'User not found' });
   if (user.twoFactorEnabled) return res.status(400).json({ error: '2FA is already enabled' });
 
-  const secret = authenticator.generateSecret();
+  const secret = totpGenerateSecret();
   // Store temporarily in session until confirmed
   req.session.pendingTwoFactorSetup = secret;
 
-  const otpauthUrl = authenticator.keyuri(user.username, 'WOLLMILCHSAU', secret);
+  const otpauthUrl = totpGenerateURI({ issuer: 'WOLLMILCHSAU', label: user.username, secret });
   const qrDataUrl = await QRCode.toDataURL(otpauthUrl);
 
   res.json({ secret, qrDataUrl });
@@ -305,7 +305,7 @@ app.post('/api/auth/2fa/verify-setup', requireAuth, (req, res) => {
   if (!secret) return res.status(400).json({ error: 'No pending 2FA setup. Start setup first.' });
   if (!code) return res.status(400).json({ error: 'Code is required' });
 
-  const isValid = authenticator.verify({ token: String(code).replace(/\s/g, ''), secret });
+  const isValid = totpVerifySync({ token: String(code).replace(/\s/g, ''), secret });
   if (!isValid) return res.status(400).json({ error: 'Invalid code. Try again.' });
 
   const users = loadUsers();
@@ -330,7 +330,7 @@ app.post('/api/auth/2fa/verify-login', (req, res) => {
   const user = users.find(u => u.id === userId);
   if (!user || !user.twoFactorSecret) return res.status(400).json({ error: 'Invalid session' });
 
-  const isValid = authenticator.verify({ token: String(code).replace(/\s/g, ''), secret: user.twoFactorSecret });
+  const isValid = totpVerifySync({ token: String(code).replace(/\s/g, ''), secret: user.twoFactorSecret });
   if (!isValid) return res.status(401).json({ error: 'Invalid code' });
 
   delete req.session.pendingTwoFactor;

@@ -5,11 +5,11 @@ const CalendarEl = {
   _calListCache: null,
 
   _MONTH_NAMES: ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'],
+  _MONTH_SHORT: ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'],
   _DAY_LABELS:  ['MO','TU','WE','TH','FR','SA','SU'],
   _DAY_FULL:    ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
 
   // ─── Called once by elements.js on mount ─────────────
-  // Binds listeners AND triggers first fetch
   bindEvents(el, data) {
     this._bindListeners(el, data);
     this._fetchAll(el, data);
@@ -27,18 +27,39 @@ const CalendarEl = {
     const calName = this._calName(data.calendarId, calList);
     const hasCalList = calList && calList.length > 1;
 
-    const body = (state === 'loading' || state === 'error' || state === 'disconnected')
-      ? this._statusHtml(state)
-      : mode === 'agenda'
-        ? this._buildAgenda(data, year, month, events)
-        : this._buildGrid(year, month, events);
+    // Header title depends on mode
+    let title;
+    if (mode === 'day') {
+      const dateStr = data.viewDay || new Date().toISOString().substring(0, 10);
+      const [dy, dm, dd] = dateStr.split('-').map(Number);
+      const dow = new Date(dy, dm - 1, dd).getDay();
+      const dayNames = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+      title = `${dayNames[dow]} ${String(dd).padStart(2,'0')} ${this._MONTH_SHORT[dm-1]} ${dy}`;
+    } else {
+      title = `${this._MONTH_NAMES[month - 1]} ${year}`;
+    }
+
+    // Toggle icon shows next mode
+    const nextMode  = mode === 'month' ? 'agenda' : mode === 'agenda' ? 'day' : 'month';
+    const toggleIcon = mode === 'month' ? '≡' : mode === 'agenda' ? '◷' : '⊞';
+
+    let body;
+    if (state === 'loading' || state === 'error' || state === 'disconnected') {
+      body = this._statusHtml(state);
+    } else if (mode === 'day') {
+      body = this._buildDayTimeline(data, events);
+    } else if (mode === 'agenda') {
+      body = this._buildAgenda(data, year, month, events);
+    } else {
+      body = this._buildGrid(year, month, events);
+    }
 
     return `
       <div class="cal-header">
-        <button class="cal-nav cal-nav--prev" title="Previous month">‹</button>
-        <span class="cal-title">${this._MONTH_NAMES[month - 1]} ${year}</span>
-        <button class="cal-nav cal-nav--next" title="Next month">›</button>
-        <button class="cal-view-toggle" data-mode="${mode}" title="Toggle view">${mode === 'agenda' ? '⊞' : '≡'}</button>
+        <button class="cal-nav cal-nav--prev" title="${mode === 'day' ? 'Previous day' : 'Previous month'}">‹</button>
+        <span class="cal-title">${title}</span>
+        <button class="cal-nav cal-nav--next" title="${mode === 'day' ? 'Next day' : 'Next month'}">›</button>
+        <button class="cal-view-toggle" data-mode="${mode}" title="Switch view">${toggleIcon}</button>
         <button class="cal-refresh" title="Refresh">↺</button>
       </div>
       <div class="cal-cal-row${hasCalList ? '' : ' hidden'}">
@@ -96,8 +117,80 @@ const CalendarEl = {
         return `<div class="cal-agenda-ev"><span class="cal-agenda-time">${timeStr}</span><span class="cal-agenda-title">${Utils.escapeHtml(ev.title)}</span></div>`;
       }).join('');
       const isPast = !isToday && dateStr < todayStr;
-      return `<div class="cal-agenda-day${isToday ? ' cal-agenda-day--today' : ''}${isPast ? ' cal-agenda-day--past' : ''}"><div class="cal-agenda-date">${dayLabel}</div>${evRows}</div>`;
+      return `<div class="cal-agenda-day${isToday ? ' cal-agenda-day--today' : ''}${isPast ? ' cal-agenda-day--past' : ''}" data-datestr="${dateStr}"><div class="cal-agenda-date">${dayLabel}</div>${evRows}</div>`;
     }).join('')}</div>`;
+  },
+
+  _buildDayTimeline(data, events) {
+    const now     = new Date();
+    const todayStr = now.toISOString().substring(0, 10);
+    const dateStr  = data.viewDay || todayStr;
+    const isToday  = dateStr === todayStr;
+
+    // Filter events for this day
+    const dayEvents = (events || []).filter(ev => ev.start.substring(0, 10) === dateStr);
+    const allDay    = dayEvents.filter(ev => ev.allDay || ev.start.length <= 10);
+    const timed     = dayEvents.filter(ev => !ev.allDay && ev.start.length > 10)
+      .sort((a, b) => a.start.localeCompare(b.start));
+
+    // Determine visible hour range
+    let minHour = 8, maxHour = 18;
+    timed.forEach(ev => {
+      const h    = new Date(ev.start).getHours();
+      const endH = ev.end ? new Date(ev.end).getHours() : h + 1;
+      minHour = Math.min(minHour, Math.max(0, h - 1));
+      maxHour = Math.max(maxHour, Math.min(23, endH + 1));
+    });
+
+    // All-day section
+    const allDayHtml = allDay.length
+      ? `<div class="cal-tl-allday">${allDay.map(ev =>
+          `<div class="cal-tl-allday-ev">${Utils.escapeHtml(ev.title)}</div>`
+        ).join('')}</div>`
+      : '';
+
+    // Build hour rows
+    const nowHour = now.getHours();
+    const nowMin  = now.getMinutes();
+    let rows = '';
+
+    for (let h = minHour; h <= maxHour; h++) {
+      const hourEvs = timed.filter(ev => new Date(ev.start).getHours() === h);
+      const isNowHour = isToday && h === nowHour;
+
+      const evHtml = hourEvs.map(ev => {
+        const start = new Date(ev.start);
+        const timeStr = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let durationStr = '';
+        if (ev.end) {
+          const end = new Date(ev.end);
+          const mins = Math.round((end - start) / 60000);
+          if (mins > 0 && mins < 1440) {
+            durationStr = mins >= 60
+              ? ` <span class="cal-tl-dur">${Math.round(mins/60*10)/10}h</span>`
+              : ` <span class="cal-tl-dur">${mins}m</span>`;
+          }
+        }
+        return `<div class="cal-tl-ev"><span class="cal-tl-time">${timeStr}</span><span class="cal-tl-title">${Utils.escapeHtml(ev.title)}</span>${durationStr}</div>`;
+      }).join('');
+
+      // Current-time marker inside the current hour row
+      const nowMarker = isNowHour
+        ? `<div class="cal-tl-now-line" style="top:${Math.round(nowMin / 60 * 100)}%"></div>`
+        : '';
+
+      rows += `<div class="cal-tl-row${isNowHour ? ' cal-tl-row--now' : ''}${hourEvs.length ? ' cal-tl-row--busy' : ''}">
+        ${nowMarker}
+        <span class="cal-tl-hour">${String(h).padStart(2,'0')}</span>
+        <div class="cal-tl-slot">${evHtml}</div>
+      </div>`;
+    }
+
+    const emptyHtml = dayEvents.length === 0
+      ? '<div class="cal-agenda-empty" style="padding:16px 0">No events</div>'
+      : '';
+
+    return `${allDayHtml}<div class="cal-timeline">${rows || emptyHtml}</div>`;
   },
 
   _statusHtml(state) {
@@ -113,7 +206,6 @@ const CalendarEl = {
     const inner = el.querySelector('.el-calendar');
     if (!inner) return;
 
-    // Remove old listener by replacing with a clone to avoid stacking
     const fresh = inner.cloneNode(true);
     inner.parentNode.replaceChild(fresh, inner);
 
@@ -126,7 +218,8 @@ const CalendarEl = {
 
       if (e.target.closest('.cal-view-toggle')) {
         const d    = Elements.getData(data.id) || data;
-        const next = (d.viewMode || 'month') === 'month' ? 'agenda' : 'month';
+        const cur  = d.viewMode || 'month';
+        const next = cur === 'month' ? 'agenda' : cur === 'agenda' ? 'day' : 'month';
         d.viewMode = next;
         Elements.updateElement(data.id, { viewMode: next });
         App.saveState();
@@ -153,8 +246,34 @@ const CalendarEl = {
         return;
       }
 
-      const dayEl = e.target.closest('.cal-day--has-events');
-      if (dayEl) { this._showPopup(el, dayEl, data); return; }
+      // Click day in month grid → jump to day view
+      const dayEl = e.target.closest('.cal-day[data-day]');
+      if (dayEl && !e.target.closest('.cal-day--empty')) {
+        const d   = Elements.getData(data.id) || data;
+        const day = parseInt(dayEl.dataset.day);
+        const y   = parseInt(dayEl.dataset.year);
+        const m   = parseInt(dayEl.dataset.month);
+        const mm  = String(m).padStart(2, '0');
+        const dd  = String(day).padStart(2, '0');
+        d.viewDay  = `${y}-${mm}-${dd}`;
+        d.viewMode = 'day';
+        Elements.updateElement(data.id, { viewDay: d.viewDay, viewMode: 'day' });
+        App.saveState();
+        this._rerenderDOM(el, d);
+        return;
+      }
+
+      // Click day in agenda → jump to day view
+      const agendaDayEl = e.target.closest('.cal-agenda-day[data-datestr]');
+      if (agendaDayEl) {
+        const d = Elements.getData(data.id) || data;
+        d.viewDay  = agendaDayEl.dataset.datestr;
+        d.viewMode = 'day';
+        Elements.updateElement(data.id, { viewDay: d.viewDay, viewMode: 'day' });
+        App.saveState();
+        this._rerenderDOM(el, d);
+        return;
+      }
 
       this._hidePopup(el);
       this._hideCalDropdown(el);
@@ -164,17 +283,45 @@ const CalendarEl = {
   // ─── Navigation / actions ────────────────────────────
 
   _navigate(el, data, dir) {
-    const d = Elements.getData(data.id) || data;
-    const now = new Date();
-    let y = d.viewYear  || now.getFullYear();
-    let m = d.viewMonth || (now.getMonth() + 1);
-    m += dir;
-    if (m < 1) { m = 12; y--; }
-    if (m > 12) { m = 1;  y++; }
-    d.viewYear = y; d.viewMonth = m;
-    Elements.updateElement(data.id, { viewYear: y, viewMonth: m });
-    App.saveState();
-    this._fetchAll(el, d);
+    const d   = Elements.getData(data.id) || data;
+    const mode = d.viewMode || 'month';
+
+    if (mode === 'day') {
+      // Navigate by 1 day
+      const dateStr = d.viewDay || new Date().toISOString().substring(0, 10);
+      const date = new Date(dateStr + 'T12:00:00');
+      date.setDate(date.getDate() + dir);
+      const newDateStr = date.toISOString().substring(0, 10);
+      const newYear    = date.getFullYear();
+      const newMonth   = date.getMonth() + 1;
+      d.viewDay   = newDateStr;
+
+      // If we crossed a month boundary, update year/month and re-fetch
+      const prevYear  = d.viewYear  || new Date().getFullYear();
+      const prevMonth = d.viewMonth || (new Date().getMonth() + 1);
+      d.viewYear  = newYear;
+      d.viewMonth = newMonth;
+      Elements.updateElement(data.id, { viewDay: newDateStr, viewYear: newYear, viewMonth: newMonth });
+      App.saveState();
+
+      if (newYear !== prevYear || newMonth !== prevMonth) {
+        this._fetchAll(el, d);
+      } else {
+        this._rerenderDOM(el, d);
+      }
+    } else {
+      // Navigate by 1 month
+      const now = new Date();
+      let y = d.viewYear  || now.getFullYear();
+      let m = d.viewMonth || (now.getMonth() + 1);
+      m += dir;
+      if (m < 1) { m = 12; y--; }
+      if (m > 12) { m = 1;  y++; }
+      d.viewYear = y; d.viewMonth = m;
+      Elements.updateElement(data.id, { viewYear: y, viewMonth: m });
+      App.saveState();
+      this._fetchAll(el, d);
+    }
   },
 
   _hardRefresh(el, data) {
@@ -195,21 +342,19 @@ const CalendarEl = {
 
     const cached      = this._cache[data.id];
     const calList     = this._calListCache?.calendars || null;
-    const freshEnough = cached && cached.year === year && cached.month === month && Date.now() - cached.fetchedAt < 600000; // 10 min
+    const freshEnough = cached && cached.year === year && cached.month === month && Date.now() - cached.fetchedAt < 600000;
 
     if (freshEnough && calList) {
-      // Fully cached — just re-render and rebind
       inner.innerHTML = this._buildShell(data, year, month, cached.events, calList, 'ok');
       this._bindListeners(el, data);
       return;
     }
 
-    // Show loading state while fetching
     inner.innerHTML = this._buildShell(data, year, month, freshEnough ? cached.events : null, calList, freshEnough ? 'ok' : 'loading');
     this._bindListeners(el, data);
 
-    const calListAge    = this._calListCache ? Date.now() - this._calListCache.fetchedAt : Infinity;
-    const calListFresh  = calListAge < (this._calListCache?.failed ? 600000 : 3600000); // failed: 10min, ok: 1hr
+    const calListAge   = this._calListCache ? Date.now() - this._calListCache.fetchedAt : Infinity;
+    const calListFresh = calListAge < (this._calListCache?.failed ? 600000 : 3600000);
 
     const [evResult, calResult] = await Promise.allSettled([
       freshEnough  ? Promise.resolve(cached)            : this._fetchEvents(data, year, month),
@@ -217,7 +362,7 @@ const CalendarEl = {
     ]);
 
     const newInner = el.querySelector('.el-calendar');
-    if (!newInner) return; // element was removed
+    if (!newInner) return;
 
     if (evResult.status !== 'fulfilled') {
       const state = evResult.reason?.status === 401 ? 'disconnected' : 'error';
@@ -245,7 +390,6 @@ const CalendarEl = {
   async _fetchCalList() {
     const res = await fetch('/api/calendar/list');
     if (!res.ok) {
-      // Cache the failure for 10 min so we don't keep hammering the API
       this._calListCache = { calendars: null, fetchedAt: Date.now(), failed: true };
       throw new Error('cal list failed');
     }
@@ -287,56 +431,6 @@ const CalendarEl = {
 
   _hideCalDropdown(el) {
     el.querySelector('.el-calendar .cal-cal-dropdown')?.classList.add('hidden');
-  },
-
-  // ─── Day event popup ─────────────────────────────────
-
-  _showPopup(el, dayEl, data) {
-    const inner = el.querySelector('.el-calendar');
-    const popup = inner?.querySelector('.cal-popup');
-    if (!popup) return;
-
-    const day   = parseInt(dayEl.dataset.day);
-    const year  = parseInt(dayEl.dataset.year);
-    const month = parseInt(dayEl.dataset.month);
-    const cached = this._cache[data.id];
-    if (!cached) return;
-
-    const evs = (cached.events || []).filter(ev => {
-      const [y, m, d] = ev.start.substring(0, 10).split('-').map(Number);
-      return y === year && m === month && d === day;
-    });
-
-    popup.innerHTML = evs.map(ev => {
-      const timeStr = (!ev.allDay && ev.start.length > 10)
-        ? new Date(ev.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : 'All day';
-      return `<div class="cal-popup-row"><span class="cal-popup-time">${timeStr}</span><span class="cal-popup-title">${Utils.escapeHtml(ev.title)}</span></div>`;
-    }).join('');
-
-    // Position popup, then clamp so it stays inside the element
-    popup.style.top  = '0';
-    popup.style.left = '0';
-    popup.classList.remove('hidden');
-
-    const innerRect = inner.getBoundingClientRect();
-    const dayRect   = dayEl.getBoundingClientRect();
-    const popupW    = popup.offsetWidth;
-    const popupH    = popup.offsetHeight;
-
-    let top  = dayRect.bottom - innerRect.top + 4;
-    let left = dayRect.left   - innerRect.left - 12;
-
-    // Clamp right edge
-    if (left + popupW > innerRect.width - 4) left = innerRect.width - popupW - 4;
-    left = Math.max(4, left);
-
-    // Flip above the day if popup overflows bottom
-    if (top + popupH > innerRect.height - 4) top = dayRect.top - innerRect.top - popupH - 4;
-    top = Math.max(4, top);
-
-    popup.style.top  = top + 'px';
-    popup.style.left = left + 'px';
   },
 
   _hidePopup(el) {

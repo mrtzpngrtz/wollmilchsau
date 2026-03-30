@@ -314,11 +314,29 @@ const CalendarEl = {
       return `<div class="cal-popup-row"><span class="cal-popup-time">${timeStr}</span><span class="cal-popup-title">${Utils.escapeHtml(ev.title)}</span></div>`;
     }).join('');
 
+    // Position popup, then clamp so it stays inside the element
+    popup.style.top  = '0';
+    popup.style.left = '0';
+    popup.classList.remove('hidden');
+
     const innerRect = inner.getBoundingClientRect();
     const dayRect   = dayEl.getBoundingClientRect();
-    popup.style.top  = (dayRect.bottom - innerRect.top + 4) + 'px';
-    popup.style.left = Math.max(4, dayRect.left - innerRect.left - 12) + 'px';
-    popup.classList.remove('hidden');
+    const popupW    = popup.offsetWidth;
+    const popupH    = popup.offsetHeight;
+
+    let top  = dayRect.bottom - innerRect.top + 4;
+    let left = dayRect.left   - innerRect.left - 12;
+
+    // Clamp right edge
+    if (left + popupW > innerRect.width - 4) left = innerRect.width - popupW - 4;
+    left = Math.max(4, left);
+
+    // Flip above the day if popup overflows bottom
+    if (top + popupH > innerRect.height - 4) top = dayRect.top - innerRect.top - popupH - 4;
+    top = Math.max(4, top);
+
+    popup.style.top  = top + 'px';
+    popup.style.left = left + 'px';
   },
 
   _hidePopup(el) {

@@ -1262,6 +1262,26 @@ app.post('/api/oauth/google/disconnect', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// List all calendars
+app.get('/api/calendar/list', requireAuth, async (req, res) => {
+  const users = loadUsers();
+  const user  = users.find(u => u.id === req.session.user.id);
+  if (!user?.googleTokens?.refreshToken) return res.status(401).json({ error: 'Not connected' });
+  try {
+    const accessToken = await getValidGoogleToken(user);
+    const r = await fetch(
+      'https://www.googleapis.com/calendar/v3/users/me/calendarList?fields=items(id,summary,backgroundColor)',
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!r.ok) throw new Error('Calendar list fetch failed');
+    const d = await r.json();
+    res.json({ calendars: (d.items || []).map(c => ({ id: c.id, name: c.summary, color: c.backgroundColor })) });
+  } catch (e) {
+    console.error('Calendar list error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Fetch calendar events for a month
 app.get('/api/calendar/events', requireAuth, async (req, res) => {
   const { year, month, calendarId = 'primary' } = req.query;

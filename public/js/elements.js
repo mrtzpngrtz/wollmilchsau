@@ -122,9 +122,10 @@ const Elements = {
         const now = new Date();
         defaults.width = 280;
         defaults.height = 300;
-        defaults.viewYear  = extra.viewYear  || now.getFullYear();
-        defaults.viewMonth = extra.viewMonth || (now.getMonth() + 1);
+        defaults.viewYear   = extra.viewYear   || now.getFullYear();
+        defaults.viewMonth  = extra.viewMonth  || (now.getMonth() + 1);
         defaults.calendarId = extra.calendarId || 'primary';
+        defaults.viewMode   = extra.viewMode   || 'month';
         break;
       }
     }

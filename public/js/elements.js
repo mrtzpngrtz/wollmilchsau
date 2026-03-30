@@ -118,6 +118,15 @@ const Elements = {
         defaults.title = extra.title || 'Chat';
         defaults.messages = extra.messages || [];
         break;
+      case 'calendar': {
+        const now = new Date();
+        defaults.width = 280;
+        defaults.height = 300;
+        defaults.viewYear  = extra.viewYear  || now.getFullYear();
+        defaults.viewMonth = extra.viewMonth || (now.getMonth() + 1);
+        defaults.calendarId = extra.calendarId || 'primary';
+        break;
+      }
     }
 
     return defaults;
@@ -287,6 +296,14 @@ const Elements = {
         inner.innerHTML = LLMChat.renderInner(data);
         el.appendChild(inner);
         setTimeout(() => LLMChat.bindEvents(el, data), 0);
+        break;
+
+      case 'calendar':
+        inner = document.createElement('div');
+        inner.className = 'el-calendar';
+        inner.innerHTML = CalendarEl.renderInner(data);
+        el.appendChild(inner);
+        setTimeout(() => CalendarEl.bindEvents(el, data), 0);
         break;
 
       case 'draw':
@@ -863,6 +880,17 @@ const Elements = {
 
       if (tool === 'llmchat') {
         const data = this.create('llmchat', canvasPos.x, canvasPos.y);
+        App.elements.push(data);
+        this.renderElement(data);
+        this.select(data.id);
+        App.setTool('select');
+        App.saveState();
+        Canvas.updateMinimap();
+        return;
+      }
+
+      if (tool === 'calendar') {
+        const data = this.create('calendar', canvasPos.x, canvasPos.y);
         App.elements.push(data);
         this.renderElement(data);
         this.select(data.id);

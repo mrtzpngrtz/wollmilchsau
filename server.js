@@ -1112,6 +1112,167 @@ app.post('/api/share/:token', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════
+//  GOOGLE OAUTH 2.0 + CALENDAR
+// ═══════════════════════════════════════════════════════
+
+const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const GOOGLE_REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI  || 'http://localhost:3000/api/oauth/google/callback';
+const GOOGLE_SCOPES        = 'https://www.googleapis.com/auth/calendar.readonly';
+
+async function _refreshGoogleToken(refreshToken) {
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type:    'refresh_token',
+    }).toString(),
+  });
+  if (!r.ok) throw new Error('Google token refresh failed');
+  const d = await r.json();
+  return { accessToken: d.access_token, expiresAt: Date.now() + (d.expires_in - 60) * 1000 };
+}
+
+async function getValidGoogleToken(user) {
+  const tokens = user.googleTokens;
+  if (!tokens || !tokens.refreshToken) throw new Error('Google Calendar not connected');
+  if (tokens.expiresAt && Date.now() < tokens.expiresAt) return tokens.accessToken;
+
+  const { accessToken, expiresAt } = await _refreshGoogleToken(tokens.refreshToken);
+  const users = loadUsers();
+  const idx = users.findIndex(u => u.id === user.id);
+  if (idx >= 0) {
+    users[idx].googleTokens.accessToken = accessToken;
+    users[idx].googleTokens.expiresAt   = expiresAt;
+    saveUsers(users);
+  }
+  return accessToken;
+}
+
+// Initiate OAuth flow
+app.get('/api/oauth/google', requireAuth, (req, res) => {
+  if (!GOOGLE_CLIENT_ID) return res.status(500).json({ error: 'GOOGLE_CLIENT_ID not set on server' });
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
+  const params = new URLSearchParams({
+    client_id:     GOOGLE_CLIENT_ID,
+    redirect_uri:  GOOGLE_REDIRECT_URI,
+    response_type: 'code',
+    scope:         GOOGLE_SCOPES,
+    access_type:   'offline',
+    prompt:        'consent',
+    state,
+  });
+  res.redirect('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString());
+});
+
+// OAuth callback
+app.get('/api/oauth/google/callback', requireAuth, async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error || !code || state !== req.session.oauthState) return res.redirect('/settings?gcal=error');
+  delete req.session.oauthState;
+
+  try {
+    const r = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id:     GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        code,
+        redirect_uri:  GOOGLE_REDIRECT_URI,
+        grant_type:    'authorization_code',
+      }).toString(),
+    });
+    if (!r.ok) throw new Error('Token exchange failed');
+    const d = await r.json();
+    const users = loadUsers();
+    const idx = users.findIndex(u => u.id === req.session.user.id);
+    if (idx < 0) throw new Error('User not found');
+    users[idx].googleTokens = {
+      accessToken:  d.access_token,
+      refreshToken: d.refresh_token,
+      expiresAt:    Date.now() + (d.expires_in - 60) * 1000,
+    };
+    saveUsers(users);
+    res.redirect('/settings?gcal=connected');
+  } catch (e) {
+    console.error('Google OAuth callback error:', e.message);
+    res.redirect('/settings?gcal=error');
+  }
+});
+
+// Connection status
+app.get('/api/oauth/google/status', requireAuth, (req, res) => {
+  const users = loadUsers();
+  const user  = users.find(u => u.id === req.session.user.id);
+  res.json({ connected: !!(user?.googleTokens?.refreshToken), configured: !!GOOGLE_CLIENT_ID });
+});
+
+// Disconnect
+app.post('/api/oauth/google/disconnect', requireAuth, (req, res) => {
+  const users = loadUsers();
+  const idx   = users.findIndex(u => u.id === req.session.user.id);
+  if (idx < 0) return res.status(404).json({ error: 'User not found' });
+  const token = users[idx].googleTokens?.accessToken;
+  delete users[idx].googleTokens;
+  saveUsers(users);
+  if (token) fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, { method: 'POST' }).catch(() => {});
+  res.json({ ok: true });
+});
+
+// Fetch calendar events for a month
+app.get('/api/calendar/events', requireAuth, async (req, res) => {
+  const { year, month, calendarId = 'primary' } = req.query;
+  if (!year || !month) return res.status(400).json({ error: 'year and month required' });
+
+  const users = loadUsers();
+  const user  = users.find(u => u.id === req.session.user.id);
+  if (!user?.googleTokens?.refreshToken) return res.status(401).json({ error: 'Google Calendar not connected' });
+
+  try {
+    const accessToken = await getValidGoogleToken(user);
+    const y = parseInt(year), m = parseInt(month) - 1;
+    const timeMin = new Date(y, m, 1).toISOString();
+    const timeMax = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
+
+    const params = new URLSearchParams({
+      timeMin,
+      timeMax,
+      singleEvents: 'true',
+      orderBy:      'startTime',
+      maxResults:   '250',
+      fields:       'items(id,summary,start,end,colorId)',
+    });
+
+    const r = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!r.ok) {
+      const err = await r.json();
+      return res.status(502).json({ error: err.error?.message || 'Google Calendar API error' });
+    }
+    const data = await r.json();
+    const events = (data.items || []).map(item => ({
+      id:      item.id,
+      title:   item.summary || '(No title)',
+      start:   item.start?.dateTime || item.start?.date || '',
+      end:     item.end?.dateTime   || item.end?.date   || '',
+      allDay:  !!(item.start?.date),
+      colorId: item.colorId,
+    }));
+    res.json({ events });
+  } catch (e) {
+    console.error('Calendar events error:', e.message);
+    res.status(500).json({ error: e.message || 'Calendar fetch failed' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════
 //  LLM PROXY (server-side, uses stored user API key)
 // ═══════════════════════════════════════════════════════
 app.post('/api/llm/chat', requireAuth, async (req, res) => {

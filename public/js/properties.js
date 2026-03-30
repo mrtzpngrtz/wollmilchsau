@@ -4,7 +4,7 @@ const Properties = {
 
   show(data) {
     if (!data) return;
-    if (data.type === 'llmchat') { this.hide(); return; }
+    if (data.type === 'llmchat' || data.type === 'calendar') { this.hide(); return; }
     this.currentId = data.id;
     const panel = document.getElementById('properties-panel');
     const content = document.getElementById('props-content');

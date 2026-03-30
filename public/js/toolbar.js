@@ -74,6 +74,7 @@ const Toolbar = {
           case 'p': App.setTool('draw'); break;
           case 'k': App.setTool('pin'); break;
           case 'l': App.setTool('llmchat'); break;
+          case 'b': App.setTool('calendar'); break;
           case 'delete':
           case 'backspace':
             Elements.deleteSelected();

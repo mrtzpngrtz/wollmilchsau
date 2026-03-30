@@ -35,8 +35,11 @@
       <a class="nav-item" data-section="llm" href="#">
         <span class="nav-idx">02</span> LLM
       </a>
+      <a class="nav-item" data-section="calendar" href="#">
+        <span class="nav-idx">03</span> CALENDAR
+      </a>
       <a class="nav-item" data-section="stats" href="#">
-        <span class="nav-idx">03</span> STATISTICS
+        <span class="nav-idx">04</span> STATISTICS
       </a>
     </nav>
 
@@ -121,6 +124,39 @@
         </div>
 
         <button class="btn-save" id="llm-save">SAVE LLM SETTINGS →</button>
+      </section>
+
+      <!-- ── CALENDAR ── -->
+      <section id="section-calendar" class="settings-section">
+        <div class="section-header">
+          <span class="section-idx">03</span>
+          <h1>CALENDAR</h1>
+        </div>
+
+        <div id="gcal-unconfigured" class="hidden">
+          <div class="settings-group">
+            <div class="settings-hint" style="color:var(--accent)">GOOGLE_CLIENT_ID is not set on the server. See <code>.env.example</code> for setup instructions.</div>
+          </div>
+        </div>
+
+        <div id="gcal-connected-ui" class="hidden">
+          <div class="settings-group">
+            <label class="settings-label">STATUS</label>
+            <div class="settings-value" style="color:#2d7a2d" id="gcal-status-text">✓ Connected to Google Calendar</div>
+          </div>
+          <button class="btn-save btn-secondary" id="gcal-disconnect">DISCONNECT →</button>
+        </div>
+
+        <div id="gcal-disconnected-ui" class="hidden">
+          <div class="settings-group">
+            <label class="settings-label">STATUS</label>
+            <div class="settings-value" id="gcal-status-text-dc">Not connected</div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-hint">Grants read-only access to your Google Calendar. Events are fetched on demand and never stored.</div>
+          </div>
+          <a id="gcal-connect" href="/api/oauth/google" class="btn-save" style="display:inline-block;text-decoration:none;text-align:center;">CONNECT GOOGLE CALENDAR →</a>
+        </div>
       </section>
 
       <!-- ── STATISTICS ── -->

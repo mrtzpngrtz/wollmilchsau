@@ -13,6 +13,14 @@ const FileViewer = {
     document.addEventListener('keydown', e => { if (e.key === 'Escape') this.close(); });
   },
 
+  openImage(url, name) {
+    const ext  = (name.split('.').pop() || '').toLowerCase();
+    const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+                   webp: 'image/webp', svg: 'image/svg+xml', avif: 'image/avif',
+                   bmp: 'image/bmp', ico: 'image/x-icon' }[ext] || 'image/jpeg';
+    this.open({ url, originalName: name, mimetype: mime });
+  },
+
   open(data) {
     const mime = data.mimetype || '';
     const url  = data.url || '';
@@ -30,6 +38,8 @@ const FileViewer = {
     this._stopMedia();
     this._body.innerHTML = '';
     this._body.className = 'file-viewer-body';
+    const modalContent = this._modal.querySelector('.modal-content');
+    modalContent.classList.toggle('fv-image-modal', mime.startsWith('image/'));
 
     if (mime.startsWith('video/')) {
       this._body.classList.add('fv-media');
@@ -62,10 +72,10 @@ const FileViewer = {
       this._body.appendChild(iframe);
 
     } else if (mime.startsWith('image/')) {
-      this._body.classList.add('fv-media');
+      this._body.classList.add('fv-image');
       const img = document.createElement('img');
       img.src = url;
-      img.style.cssText = 'max-width:100%;max-height:75vh;object-fit:contain;display:block;margin:auto;';
+      img.alt = name;
       this._body.appendChild(img);
 
     } else if (mime.startsWith('text/') || this._isTextExt(name)) {

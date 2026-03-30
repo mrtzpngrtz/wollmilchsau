@@ -1202,7 +1202,7 @@ const Elements = {
         FileViewer.open(data);
       }
       if (data.type === 'image' && data.url) {
-        elementDom.classList.toggle('img-pan-mode');
+        FileViewer.openImage(data.url, data.originalName || 'image');
       }
       // todo double-click is handled by Todos.bindEvents
     });

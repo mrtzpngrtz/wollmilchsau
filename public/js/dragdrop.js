@@ -12,15 +12,18 @@ const DragDrop = {
 
     const isDashboardOpen = () => document.getElementById('boards-dashboard')?.classList.contains('hidden') === false;
 
+    const isFileDrag = (e) => e.dataTransfer?.types && Array.from(e.dataTransfer.types).includes('Files');
+
     document.addEventListener('dragenter', (e) => {
       e.preventDefault();
-      if (isDashboardOpen()) return;
+      if (isDashboardOpen() || !isFileDrag(e)) return;
       dragCounter++;
       dropZone.classList.remove('hidden');
     });
 
     document.addEventListener('dragleave', (e) => {
       e.preventDefault();
+      if (!isFileDrag(e)) return;
       dragCounter--;
       if (dragCounter <= 0) {
         dropZone.classList.add('hidden');

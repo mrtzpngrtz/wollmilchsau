@@ -1115,8 +1115,13 @@ app.post('/api/share/:token', (req, res) => {
 //  GOOGLE OAUTH 2.0 + CALENDAR
 // ═══════════════════════════════════════════════════════
 
-const GOOGLE_SCOPES       = 'https://www.googleapis.com/auth/calendar.readonly';
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/oauth/google/callback';
+const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+
+function getRedirectUri(req) {
+  const proto = req.get('x-forwarded-proto') || req.protocol;
+  const host  = req.get('x-forwarded-host')  || req.get('host');
+  return `${proto}://${host}/api/oauth/google/callback`;
+}
 
 function _getGoogleCreds(user) {
   const clientId     = user.googleClientId     || '';
@@ -1180,10 +1185,12 @@ app.get('/api/oauth/google', requireAuth, (req, res) => {
     return res.status(400).send('Google Client ID not configured. Go to Settings → Calendar and enter your credentials first.');
   }
   const state = crypto.randomBytes(16).toString('hex');
+  const redirectUri = getRedirectUri(req);
   req.session.oauthState = state;
+  req.session.oauthRedirectUri = redirectUri;
   const params = new URLSearchParams({
     client_id:     clientId,
-    redirect_uri:  GOOGLE_REDIRECT_URI,
+    redirect_uri:  redirectUri,
     response_type: 'code',
     scope:         GOOGLE_SCOPES,
     access_type:   'offline',
@@ -1198,6 +1205,8 @@ app.get('/api/oauth/google/callback', requireAuth, async (req, res) => {
   const { code, state, error } = req.query;
   if (error || !code || state !== req.session.oauthState) return res.redirect('/settings?gcal=error');
   delete req.session.oauthState;
+  const redirectUri = req.session.oauthRedirectUri || getRedirectUri(req);
+  delete req.session.oauthRedirectUri;
 
   try {
     const users = loadUsers();
@@ -1212,7 +1221,7 @@ app.get('/api/oauth/google/callback', requireAuth, async (req, res) => {
         client_id:     clientId,
         client_secret: clientSecret,
         code,
-        redirect_uri:  GOOGLE_REDIRECT_URI,
+        redirect_uri:  redirectUri,
         grant_type:    'authorization_code',
       }).toString(),
     });

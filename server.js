@@ -1292,7 +1292,8 @@ app.get('/api/calendar/events', requireAuth, async (req, res) => {
     );
     if (!r.ok) {
       const err = await r.json();
-      return res.status(502).json({ error: err.error?.message || 'Google Calendar API error' });
+      console.error('Google Calendar API error:', JSON.stringify(err));
+      return res.status(502).json({ error: err.error?.message || 'Google Calendar API error', details: err.error });
     }
     const data = await r.json();
     const events = (data.items || []).map(item => ({

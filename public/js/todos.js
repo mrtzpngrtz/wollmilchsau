@@ -118,6 +118,10 @@ const Todos = {
     if (!container) return;
 
     el.querySelectorAll('.todo-item').forEach(itemEl => {
+      itemEl.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.todo-drag')) e.stopPropagation();
+      });
+
       itemEl.addEventListener('dragstart', (e) => {
         // Only initiate drag from the handle
         if (!e.target.closest('.todo-drag') && e.target !== itemEl) {

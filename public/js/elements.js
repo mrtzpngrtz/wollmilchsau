@@ -739,7 +739,8 @@ const Elements = {
 
       // Don't start dragging if interacting with todo elements
       if (target.closest('.todo-check') || target.closest('.todo-add-btn') ||
-          target.closest('.todo-add-row') || target.closest('.todo-edit-input')) {
+          target.closest('.todo-add-row') || target.closest('.todo-edit-input') ||
+          target.closest('.todo-drag') || target.closest('.todo-star')) {
         return;
       }
 

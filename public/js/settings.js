@@ -131,31 +131,47 @@ const Settings = {
   },
 
   async initCalendar() {
-    const res = await fetch('/api/oauth/google/status');
-    if (!res.ok) return;
-    const { connected, configured } = await res.json();
+    // Show redirect URI hint
+    const hint = document.getElementById('gcal-redirect-hint');
+    if (hint) hint.textContent = window.location.origin + '/api/oauth/google/callback';
 
-    if (!configured) {
-      document.getElementById('gcal-unconfigured')?.classList.remove('hidden');
-      return;
-    }
+    // Save credentials
+    document.getElementById('gcal-creds-save')?.addEventListener('click', async () => {
+      const clientId     = document.getElementById('gcal-client-id').value.trim();
+      const clientSecret = document.getElementById('gcal-client-secret').value.trim();
+      if (!clientId || !clientSecret) { this.toast('Both fields are required.', true); return; }
+      const r = await fetch('/api/oauth/google/credentials', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ googleClientId: clientId, googleClientSecret: clientSecret }),
+      });
+      if (!r.ok) { const d = await r.json(); this.toast(d.error || 'Save failed', true); return; }
+      document.getElementById('gcal-client-secret').value = '';
+      this.toast('Credentials saved. Now connect your account below.');
+      await this._refreshCalendarStatus();
+    });
 
-    if (connected) {
-      document.getElementById('gcal-connected-ui')?.classList.remove('hidden');
-    } else {
-      document.getElementById('gcal-disconnected-ui')?.classList.remove('hidden');
-    }
+    await this._refreshCalendarStatus();
 
     document.getElementById('gcal-disconnect')?.addEventListener('click', async () => {
       const r = await fetch('/api/oauth/google/disconnect', { method: 'POST' });
       if (r.ok) {
-        document.getElementById('gcal-connected-ui')?.classList.add('hidden');
-        document.getElementById('gcal-disconnected-ui')?.classList.remove('hidden');
         this.toast('Disconnected from Google Calendar.');
+        await this._refreshCalendarStatus();
       } else {
         this.toast('Disconnect failed.', true);
       }
     });
+  },
+
+  async _refreshCalendarStatus() {
+    const res = await fetch('/api/oauth/google/status');
+    if (!res.ok) return;
+    const { connected, configured } = await res.json();
+
+    document.getElementById('gcal-connected-ui')?.classList.toggle('hidden', !connected);
+    document.getElementById('gcal-disconnected-ui')?.classList.toggle('hidden', connected || !configured);
+    document.getElementById('gcal-needs-creds')?.classList.toggle('hidden', configured || connected);
   },
 
   async loadStats() {

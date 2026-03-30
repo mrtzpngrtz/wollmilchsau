@@ -133,29 +133,44 @@
           <h1>CALENDAR</h1>
         </div>
 
-        <div id="gcal-unconfigured" class="hidden">
-          <div class="settings-group">
-            <div class="settings-hint" style="color:var(--accent)">GOOGLE_CLIENT_ID is not set on the server. See <code>.env.example</code> for setup instructions.</div>
+        <div class="settings-divider">GOOGLE OAUTH CREDENTIALS</div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="gcal-client-id">CLIENT ID</label>
+          <input type="text" id="gcal-client-id" placeholder="…apps.googleusercontent.com" autocomplete="off">
+        </div>
+        <div class="settings-group">
+          <label class="settings-label" for="gcal-client-secret">CLIENT SECRET</label>
+          <input type="password" id="gcal-client-secret" placeholder="GOCSPX-…" autocomplete="off">
+          <div class="settings-hint">
+            Get these from <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> →
+            APIs &amp; Services → Credentials → OAuth 2.0 Client ID (Web application).<br>
+            Set redirect URI to <code id="gcal-redirect-hint"></code>
           </div>
         </div>
+        <button class="btn-save btn-secondary" id="gcal-creds-save">SAVE CREDENTIALS →</button>
+
+        <div class="settings-divider">CONNECTION</div>
 
         <div id="gcal-connected-ui" class="hidden">
           <div class="settings-group">
             <label class="settings-label">STATUS</label>
-            <div class="settings-value" style="color:#2d7a2d" id="gcal-status-text">✓ Connected to Google Calendar</div>
+            <div class="settings-value" id="gcal-status-text">✓ Connected to Google Calendar</div>
           </div>
           <button class="btn-save btn-secondary" id="gcal-disconnect">DISCONNECT →</button>
         </div>
 
         <div id="gcal-disconnected-ui" class="hidden">
           <div class="settings-group">
-            <label class="settings-label">STATUS</label>
-            <div class="settings-value" id="gcal-status-text-dc">Not connected</div>
-          </div>
-          <div class="settings-group">
             <div class="settings-hint">Grants read-only access to your Google Calendar. Events are fetched on demand and never stored.</div>
           </div>
           <a id="gcal-connect" href="/api/oauth/google" class="btn-save" style="display:inline-block;text-decoration:none;text-align:center;">CONNECT GOOGLE CALENDAR →</a>
+        </div>
+
+        <div id="gcal-needs-creds" class="hidden">
+          <div class="settings-group">
+            <div class="settings-hint">Save your Client ID and Secret above first, then connect.</div>
+          </div>
         </div>
       </section>
 

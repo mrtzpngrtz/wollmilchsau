@@ -1115,19 +1115,25 @@ app.post('/api/share/:token', (req, res) => {
 //  GOOGLE OAUTH 2.0 + CALENDAR
 // ═══════════════════════════════════════════════════════
 
-const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     || '';
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const GOOGLE_REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI  || 'http://localhost:3000/api/oauth/google/callback';
-const GOOGLE_SCOPES        = 'https://www.googleapis.com/auth/calendar.readonly';
+const GOOGLE_SCOPES       = 'https://www.googleapis.com/auth/calendar.readonly';
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/oauth/google/callback';
 
-async function _refreshGoogleToken(refreshToken) {
+function _getGoogleCreds(user) {
+  const clientId     = user.googleClientId     || '';
+  const clientSecret = user.googleClientSecret || '';
+  if (!clientId || !clientSecret) throw new Error('Google credentials not configured');
+  return { clientId, clientSecret };
+}
+
+async function _refreshGoogleToken(user) {
+  const { clientId, clientSecret } = _getGoogleCreds(user);
   const r = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id:     GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: refreshToken,
+      client_id:     clientId,
+      client_secret: clientSecret,
+      refresh_token: user.googleTokens.refreshToken,
       grant_type:    'refresh_token',
     }).toString(),
   });
@@ -1141,7 +1147,7 @@ async function getValidGoogleToken(user) {
   if (!tokens || !tokens.refreshToken) throw new Error('Google Calendar not connected');
   if (tokens.expiresAt && Date.now() < tokens.expiresAt) return tokens.accessToken;
 
-  const { accessToken, expiresAt } = await _refreshGoogleToken(tokens.refreshToken);
+  const { accessToken, expiresAt } = await _refreshGoogleToken(user);
   const users = loadUsers();
   const idx = users.findIndex(u => u.id === user.id);
   if (idx >= 0) {
@@ -1152,13 +1158,31 @@ async function getValidGoogleToken(user) {
   return accessToken;
 }
 
+// Save Google credentials (Client ID + Secret) to user profile
+app.put('/api/oauth/google/credentials', requireAuth, (req, res) => {
+  const { googleClientId, googleClientSecret } = req.body;
+  if (!googleClientId || !googleClientSecret) return res.status(400).json({ error: 'Both Client ID and Client Secret are required' });
+  const users = loadUsers();
+  const idx   = users.findIndex(u => u.id === req.session.user.id);
+  if (idx < 0) return res.status(404).json({ error: 'User not found' });
+  users[idx].googleClientId     = googleClientId.trim();
+  users[idx].googleClientSecret = googleClientSecret.trim();
+  saveUsers(users);
+  res.json({ ok: true });
+});
+
 // Initiate OAuth flow
 app.get('/api/oauth/google', requireAuth, (req, res) => {
-  if (!GOOGLE_CLIENT_ID) return res.status(500).json({ error: 'GOOGLE_CLIENT_ID not set on server' });
+  const users = loadUsers();
+  const user  = users.find(u => u.id === req.session.user.id);
+  let clientId;
+  try { ({ clientId } = _getGoogleCreds(user)); } catch {
+    return res.status(400).send('Google Client ID not configured. Go to Settings → Calendar and enter your credentials first.');
+  }
   const state = crypto.randomBytes(16).toString('hex');
   req.session.oauthState = state;
   const params = new URLSearchParams({
-    client_id:     GOOGLE_CLIENT_ID,
+    client_id:     clientId,
     redirect_uri:  GOOGLE_REDIRECT_URI,
     response_type: 'code',
     scope:         GOOGLE_SCOPES,
@@ -1176,12 +1200,17 @@ app.get('/api/oauth/google/callback', requireAuth, async (req, res) => {
   delete req.session.oauthState;
 
   try {
+    const users = loadUsers();
+    const idx   = users.findIndex(u => u.id === req.session.user.id);
+    if (idx < 0) throw new Error('User not found');
+    const { clientId, clientSecret } = _getGoogleCreds(users[idx]);
+
     const r = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id:     GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
+        client_id:     clientId,
+        client_secret: clientSecret,
         code,
         redirect_uri:  GOOGLE_REDIRECT_URI,
         grant_type:    'authorization_code',
@@ -1189,9 +1218,6 @@ app.get('/api/oauth/google/callback', requireAuth, async (req, res) => {
     });
     if (!r.ok) throw new Error('Token exchange failed');
     const d = await r.json();
-    const users = loadUsers();
-    const idx = users.findIndex(u => u.id === req.session.user.id);
-    if (idx < 0) throw new Error('User not found');
     users[idx].googleTokens = {
       accessToken:  d.access_token,
       refreshToken: d.refresh_token,
@@ -1209,7 +1235,10 @@ app.get('/api/oauth/google/callback', requireAuth, async (req, res) => {
 app.get('/api/oauth/google/status', requireAuth, (req, res) => {
   const users = loadUsers();
   const user  = users.find(u => u.id === req.session.user.id);
-  res.json({ connected: !!(user?.googleTokens?.refreshToken), configured: !!GOOGLE_CLIENT_ID });
+  res.json({
+    connected:  !!(user?.googleTokens?.refreshToken),
+    configured: !!(user?.googleClientId && user?.googleClientSecret),
+  });
 });
 
 // Disconnect

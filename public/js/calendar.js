@@ -2,11 +2,18 @@
 const CalendarEl = {
 
   _cache:        {}, // elementId -> { events, year, month, fetchedAt }
-  _calListCache: null, // { calendars, fetchedAt }
+  _calListCache: null,
 
   _MONTH_NAMES: ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'],
   _DAY_LABELS:  ['MO','TU','WE','TH','FR','SA','SU'],
   _DAY_FULL:    ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+
+  // ─── Called once by elements.js on mount ─────────────
+  // Binds listeners AND triggers first fetch
+  bindEvents(el, data) {
+    this._bindListeners(el, data);
+    this._fetchAll(el, data);
+  },
 
   // ─── Render ──────────────────────────────────────────
 
@@ -16,11 +23,11 @@ const CalendarEl = {
   },
 
   _buildShell(data, year, month, events, calList, state) {
-    const mode = data.viewMode || 'month';
+    const mode    = data.viewMode || 'month';
     const calName = this._calName(data.calendarId, calList);
     const hasCalList = calList && calList.length > 1;
 
-    const gridOrAgenda = state === 'loading' || state === 'error' || state === 'disconnected'
+    const body = (state === 'loading' || state === 'error' || state === 'disconnected')
       ? this._statusHtml(state)
       : mode === 'agenda'
         ? this._buildAgenda(data, year, month, events)
@@ -31,7 +38,7 @@ const CalendarEl = {
         <button class="cal-nav cal-nav--prev" title="Previous month">‹</button>
         <span class="cal-title">${this._MONTH_NAMES[month - 1]} ${year}</span>
         <button class="cal-nav cal-nav--next" title="Next month">›</button>
-        <button class="cal-view-toggle" title="Toggle agenda / month view" data-mode="${mode}">${mode === 'agenda' ? '⊞' : '≡'}</button>
+        <button class="cal-view-toggle" data-mode="${mode}" title="Toggle view">${mode === 'agenda' ? '⊞' : '≡'}</button>
         <button class="cal-refresh" title="Refresh">↺</button>
       </div>
       <div class="cal-cal-row${hasCalList ? '' : ' hidden'}">
@@ -41,14 +48,14 @@ const CalendarEl = {
           <span class="cal-cal-arrow">▾</span>
         </button>
       </div>
-      <div class="cal-body">${gridOrAgenda}</div>
+      <div class="cal-body">${body}</div>
       <div class="cal-cal-dropdown hidden"></div>
       <div class="cal-popup hidden"></div>`;
   },
 
   _buildGrid(year, month, events) {
-    const eventMap = this._eventMap(year, month, events);
-    const firstDow   = new Date(year, month - 1, 1).getDay();
+    const eventMap    = this._eventMap(year, month, events);
+    const firstDow    = new Date(year, month - 1, 1).getDay();
     const startOffset = (firstDow + 6) % 7;
     const daysInMonth = new Date(year, month, 0).getDate();
     const today       = new Date();
@@ -58,51 +65,38 @@ const CalendarEl = {
     let cells = '';
     for (let i = 0; i < startOffset; i++) cells += '<div class="cal-day cal-day--empty"></div>';
     for (let d = 1; d <= daysInMonth; d++) {
-      const evs = eventMap[d] || [];
-      const dots = Math.min(evs.length, 3);
+      const evs   = eventMap[d] || [];
+      const dots  = Math.min(evs.length, 3);
       const isToday = isNow && d === todayDate;
       cells += `<div class="cal-day${isToday ? ' cal-day--today' : ''}${evs.length ? ' cal-day--has-events' : ''}" data-day="${d}" data-year="${year}" data-month="${month}"><span class="cal-day-num">${d}</span>${evs.length ? `<span class="cal-dots" data-dots="${dots}"></span>` : ''}</div>`;
     }
-
     return `<div class="cal-grid">${this._DAY_LABELS.map(l => `<div class="cal-dow">${l}</div>`).join('')}${cells}</div>`;
   },
 
   _buildAgenda(data, year, month, events) {
-    if (!events || events.length === 0) {
-      return '<div class="cal-agenda-empty">No events this month</div>';
-    }
+    if (!events || events.length === 0) return '<div class="cal-agenda-empty">No events this month</div>';
 
-    const today     = new Date();
-    const todayStr  = today.toISOString().substring(0, 10);
-
-    // Group by date
-    const byDay = {};
+    const todayStr = new Date().toISOString().substring(0, 10);
+    const byDay    = {};
     events.forEach(ev => {
       const dateStr = ev.start.substring(0, 10);
       if (!byDay[dateStr]) byDay[dateStr] = [];
       byDay[dateStr].push(ev);
     });
 
-    const sortedDays = Object.keys(byDay).sort();
-
-    const rows = sortedDays.map(dateStr => {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      const dow     = new Date(y, m - 1, d).getDay();
-      const isToday = dateStr === todayStr;
-      const dayLabel = `${String(d).padStart(2, '0')} ${this._DAY_FULL[dow].substring(0, 3).toUpperCase()}`;
-
-      const evRows = byDay[dateStr].map(ev => {
-        let timeStr = 'All day';
-        if (!ev.allDay && ev.start.length > 10) {
-          timeStr = new Date(ev.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
+    return `<div class="cal-agenda">${Object.keys(byDay).sort().map(dateStr => {
+      const [y, m, d]  = dateStr.split('-').map(Number);
+      const dow        = new Date(y, m - 1, d).getDay();
+      const isToday    = dateStr === todayStr;
+      const dayLabel   = `${String(d).padStart(2, '0')} ${this._DAY_FULL[dow].substring(0, 3).toUpperCase()}`;
+      const evRows     = byDay[dateStr].map(ev => {
+        const timeStr = (!ev.allDay && ev.start.length > 10)
+          ? new Date(ev.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'All day';
         return `<div class="cal-agenda-ev"><span class="cal-agenda-time">${timeStr}</span><span class="cal-agenda-title">${Utils.escapeHtml(ev.title)}</span></div>`;
       }).join('');
-
       return `<div class="cal-agenda-day${isToday ? ' cal-agenda-day--today' : ''}"><div class="cal-agenda-date">${dayLabel}</div>${evRows}</div>`;
-    }).join('');
-
-    return `<div class="cal-agenda">${rows}</div>`;
+    }).join('')}</div>`;
   },
 
   _statusHtml(state) {
@@ -112,15 +106,17 @@ const CalendarEl = {
     return '';
   },
 
-  // ─── Events ──────────────────────────────────────────
+  // ─── Event listeners (no fetch side-effects) ─────────
 
-  bindEvents(el, data) {
+  _bindListeners(el, data) {
     const inner = el.querySelector('.el-calendar');
     if (!inner) return;
 
-    this._fetchAll(el, data);
+    // Remove old listener by replacing with a clone to avoid stacking
+    const fresh = inner.cloneNode(true);
+    inner.parentNode.replaceChild(fresh, inner);
 
-    inner.addEventListener('click', e => {
+    fresh.addEventListener('click', e => {
       e.stopPropagation();
 
       if (e.target.closest('.cal-nav--prev'))  { this._navigate(el, data, -1); return; }
@@ -128,44 +124,43 @@ const CalendarEl = {
       if (e.target.closest('.cal-refresh'))    { this._hardRefresh(el, data); return; }
 
       if (e.target.closest('.cal-view-toggle')) {
-        const d = Elements.getData(data.id) || data;
+        const d    = Elements.getData(data.id) || data;
         const next = (d.viewMode || 'month') === 'month' ? 'agenda' : 'month';
         d.viewMode = next;
         Elements.updateElement(data.id, { viewMode: next });
         App.saveState();
-        this._rerender(el, d);
+        this._rerenderDOM(el, d);
         return;
       }
 
       if (e.target.closest('.cal-cal-btn')) {
-        this._toggleCalDropdown(inner, data);
-        return;
+        this._toggleCalDropdown(el, data); return;
       }
 
       const calItem = e.target.closest('.cal-cal-item');
       if (calItem) {
-        const d = Elements.getData(data.id) || data;
+        const d     = Elements.getData(data.id) || data;
         const newId = calItem.dataset.calId;
+        this._hideCalDropdown(el);
         if (newId !== d.calendarId) {
           d.calendarId = newId;
           Elements.updateElement(data.id, { calendarId: newId });
-          delete this._cache[data.id]; // clear event cache for this element
+          delete this._cache[data.id];
           App.saveState();
           this._fetchAll(el, d);
-        } else {
-          this._hideCalDropdown(inner);
         }
         return;
       }
 
-      // Click on day with events
       const dayEl = e.target.closest('.cal-day--has-events');
-      if (dayEl) { this._showPopup(inner, dayEl, data); return; }
+      if (dayEl) { this._showPopup(el, dayEl, data); return; }
 
-      this._hidePopup(inner);
-      this._hideCalDropdown(inner);
+      this._hidePopup(el);
+      this._hideCalDropdown(el);
     });
   },
+
+  // ─── Navigation / actions ────────────────────────────
 
   _navigate(el, data, dir) {
     const d = Elements.getData(data.id) || data;
@@ -184,8 +179,7 @@ const CalendarEl = {
   _hardRefresh(el, data) {
     delete this._cache[data.id];
     this._calListCache = null;
-    const d = Elements.getData(data.id) || data;
-    this._fetchAll(el, d);
+    this._fetchAll(el, Elements.getData(data.id) || data);
   },
 
   // ─── Fetch ───────────────────────────────────────────
@@ -198,40 +192,43 @@ const CalendarEl = {
     const year  = data.viewYear  || now.getFullYear();
     const month = data.viewMonth || (now.getMonth() + 1);
 
-    // Optimistically render with whatever we have cached
-    const cached    = this._cache[data.id];
-    const calList   = this._calListCache?.calendars || null;
-    const freshEnough = cached && cached.year === year && cached.month === month && Date.now() - cached.fetchedAt < 300000;
+    const cached      = this._cache[data.id];
+    const calList     = this._calListCache?.calendars || null;
+    const freshEnough = cached && cached.year === year && cached.month === month && Date.now() - cached.fetchedAt < 600000; // 10 min
 
     if (freshEnough && calList) {
+      // Fully cached — just re-render and rebind
       inner.innerHTML = this._buildShell(data, year, month, cached.events, calList, 'ok');
-      this.bindEvents(el, data);
+      this._bindListeners(el, data);
       return;
     }
 
-    // Show loading
+    // Show loading state while fetching
     inner.innerHTML = this._buildShell(data, year, month, freshEnough ? cached.events : null, calList, freshEnough ? 'ok' : 'loading');
-    this.bindEvents(el, data);
+    this._bindListeners(el, data);
 
-    // Fetch in parallel
+    const calListAge    = this._calListCache ? Date.now() - this._calListCache.fetchedAt : Infinity;
+    const calListFresh  = calListAge < (this._calListCache?.failed ? 600000 : 3600000); // failed: 10min, ok: 1hr
+
     const [evResult, calResult] = await Promise.allSettled([
-      freshEnough ? Promise.resolve(cached) : this._fetchEvents(data, year, month),
-      this._calListCache ? Promise.resolve(this._calListCache) : this._fetchCalList(),
+      freshEnough  ? Promise.resolve(cached)            : this._fetchEvents(data, year, month),
+      calListFresh ? Promise.resolve(this._calListCache) : this._fetchCalList(),
     ]);
 
-    const events  = evResult.status === 'fulfilled'  ? evResult.value  : null;
-    const calData = calResult.status === 'fulfilled' ? calResult.value : null;
+    const newInner = el.querySelector('.el-calendar');
+    if (!newInner) return; // element was removed
 
-    if (!events) {
-      // Check if it was a 401
+    if (evResult.status !== 'fulfilled') {
       const state = evResult.reason?.status === 401 ? 'disconnected' : 'error';
-      inner.innerHTML = this._buildShell(data, year, month, null, calData?.calendars || null, state);
-      this.bindEvents(el, data);
+      newInner.innerHTML = this._buildShell(data, year, month, null, calResult.value?.calendars || null, state);
+      this._bindListeners(el, data);
       return;
     }
 
-    inner.innerHTML = this._buildShell(data, year, month, events.events, calData?.calendars || null, 'ok');
-    this.bindEvents(el, data);
+    const events  = evResult.value?.events || [];
+    const calData = calResult.status === 'fulfilled' ? calResult.value?.calendars : null;
+    newInner.innerHTML = this._buildShell(data, year, month, events, calData, 'ok');
+    this._bindListeners(el, data);
   },
 
   async _fetchEvents(data, year, month) {
@@ -246,13 +243,17 @@ const CalendarEl = {
 
   async _fetchCalList() {
     const res = await fetch('/api/calendar/list');
-    if (!res.ok) throw new Error('cal list failed');
+    if (!res.ok) {
+      // Cache the failure for 10 min so we don't keep hammering the API
+      this._calListCache = { calendars: null, fetchedAt: Date.now(), failed: true };
+      throw new Error('cal list failed');
+    }
     const d = await res.json();
     this._calListCache = { calendars: d.calendars, fetchedAt: Date.now() };
     return this._calListCache;
   },
 
-  _rerender(el, data) {
+  _rerenderDOM(el, data) {
     const inner = el.querySelector('.el-calendar');
     if (!inner) return;
     const now   = new Date();
@@ -260,18 +261,19 @@ const CalendarEl = {
     const month = data.viewMonth || (now.getMonth() + 1);
     const cached  = this._cache[data.id];
     const calList = this._calListCache?.calendars || null;
-    const events  = (cached && cached.year === year && cached.month === month) ? cached.events : null;
-    inner.innerHTML = this._buildShell(data, year, month, events, calList, events ? 'ok' : 'loading');
-    this.bindEvents(el, data);
-    if (!events) this._fetchAll(el, data);
+    const isFresh = cached && cached.year === year && cached.month === month;
+    inner.innerHTML = this._buildShell(data, year, month, isFresh ? cached.events : null, calList, isFresh ? 'ok' : 'loading');
+    this._bindListeners(el, data);
+    if (!isFresh) this._fetchAll(el, data);
   },
 
   // ─── Calendar dropdown ───────────────────────────────
 
-  _toggleCalDropdown(inner, data) {
-    const dropdown = inner.querySelector('.cal-cal-dropdown');
+  _toggleCalDropdown(el, data) {
+    const inner    = el.querySelector('.el-calendar');
+    const dropdown = inner?.querySelector('.cal-cal-dropdown');
     if (!dropdown) return;
-    if (!dropdown.classList.contains('hidden')) { this._hideCalDropdown(inner); return; }
+    if (!dropdown.classList.contains('hidden')) { this._hideCalDropdown(el); return; }
 
     const calendars = this._calListCache?.calendars || [];
     dropdown.innerHTML = calendars.map(c => `
@@ -282,15 +284,17 @@ const CalendarEl = {
     dropdown.classList.remove('hidden');
   },
 
-  _hideCalDropdown(inner) {
-    inner.querySelector('.cal-cal-dropdown')?.classList.add('hidden');
+  _hideCalDropdown(el) {
+    el.querySelector('.el-calendar .cal-cal-dropdown')?.classList.add('hidden');
   },
 
-  // ─── Day popup ───────────────────────────────────────
+  // ─── Day event popup ─────────────────────────────────
 
-  _showPopup(inner, dayEl, data) {
-    const popup = inner.querySelector('.cal-popup');
+  _showPopup(el, dayEl, data) {
+    const inner = el.querySelector('.el-calendar');
+    const popup = inner?.querySelector('.cal-popup');
     if (!popup) return;
+
     const day   = parseInt(dayEl.dataset.day);
     const year  = parseInt(dayEl.dataset.year);
     const month = parseInt(dayEl.dataset.month);
@@ -316,8 +320,8 @@ const CalendarEl = {
     popup.classList.remove('hidden');
   },
 
-  _hidePopup(inner) {
-    inner.querySelector('.cal-popup')?.classList.add('hidden');
+  _hidePopup(el) {
+    el.querySelector('.el-calendar .cal-popup')?.classList.add('hidden');
   },
 
   // ─── Helpers ─────────────────────────────────────────
@@ -337,13 +341,11 @@ const CalendarEl = {
 
   _calName(calendarId, calList) {
     if (!calList) return calendarId || 'primary';
-    const cal = calList.find(c => c.id === (calendarId || 'primary'));
-    return cal ? cal.name : (calendarId || 'primary');
+    return calList.find(c => c.id === (calendarId || 'primary'))?.name || calendarId || 'primary';
   },
 
   _calColor(calendarId, calList) {
     if (!calList) return '#aaa';
-    const cal = calList.find(c => c.id === (calendarId || 'primary'));
-    return cal?.color || '#aaa';
+    return calList.find(c => c.id === (calendarId || 'primary'))?.color || '#aaa';
   },
 };

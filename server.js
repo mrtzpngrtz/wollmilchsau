@@ -7,8 +7,48 @@ const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
 const { WebSocketServer } = require('ws');
-const { generateSecret: totpGenerateSecret, generateSync: totpGenerateSync, verifySync: totpVerifySync, generateURI: totpGenerateURI } = require('otplib');
 const QRCode = require('qrcode');
+
+// ── Minimal TOTP (RFC 6238) — no external dependency ──────────────────────
+const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function _b32decode(str) {
+  str = str.toUpperCase().replace(/=+$/, '').replace(/\s/g, '');
+  let bits = 0, val = 0;
+  const out = [];
+  for (const ch of str) {
+    const idx = BASE32.indexOf(ch);
+    if (idx < 0) continue;
+    val = (val << 5) | idx; bits += 5;
+    if (bits >= 8) { out.push((val >>> (bits - 8)) & 0xff); bits -= 8; }
+  }
+  return Buffer.from(out);
+}
+function _b32encode(buf) {
+  let bits = 0, val = 0, out = '';
+  for (const byte of buf) { val = (val << 8) | byte; bits += 8; while (bits >= 5) { out += BASE32[(val >>> (bits - 5)) & 31]; bits -= 5; } }
+  if (bits > 0) out += BASE32[(val << (5 - bits)) & 31];
+  return out;
+}
+function _hotp(secret, counter) {
+  const key = _b32decode(secret);
+  const msg = Buffer.alloc(8);
+  msg.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+  msg.writeUInt32BE(counter >>> 0, 4);
+  const hmac = crypto.createHmac('sha1', key).update(msg).digest();
+  const offset = hmac[hmac.length - 1] & 0xf;
+  const code = ((hmac[offset] & 0x7f) << 24) | ((hmac[offset + 1] & 0xff) << 16) | ((hmac[offset + 2] & 0xff) << 8) | (hmac[offset + 3] & 0xff);
+  return String(code % 1000000).padStart(6, '0');
+}
+function totpGenerateSecret() { return _b32encode(crypto.randomBytes(20)); }
+function totpVerifySync({ token, secret }) {
+  const t = Math.floor(Date.now() / 1000 / 30);
+  for (let d = -1; d <= 1; d++) { if (_hotp(secret, t + d) === String(token).replace(/\s/g, '')) return true; }
+  return false;
+}
+function totpGenerateURI({ issuer, label, secret }) {
+  return `otpauth://totp/${encodeURIComponent(issuer + ':' + label)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 const app = express();
 const PORT = 3000;

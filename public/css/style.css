@@ -2489,8 +2489,8 @@ body.dark #suggestion-submit:hover {
 .todo-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 5px 8px 5px 4px;
   border-bottom: 1px solid var(--light-grey);
   transition: background 0.05s;
 }
@@ -2503,6 +2503,41 @@ body.dark #suggestion-submit:hover {
   text-decoration: line-through;
   opacity: 0.45;
 }
+
+/* Important highlight */
+.todo-item.important {
+  border-left: 2px solid var(--accent);
+}
+
+/* Drag handle */
+.todo-drag {
+  font-size: 11px;
+  opacity: 0.2;
+  cursor: grab;
+  flex-shrink: 0;
+  user-select: none;
+  padding: 0 2px;
+  line-height: 1;
+}
+.todo-drag:hover { opacity: 0.6; }
+.todo-item.todo-dragging { opacity: 0.4; }
+.todo-item.todo-drag-over { background: var(--off-white); outline: 1px dashed var(--accent); }
+
+/* Star / important button */
+.todo-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--accent);
+  opacity: 0.25;
+  flex-shrink: 0;
+  padding: 0 2px;
+  line-height: 1;
+  transition: opacity 0.1s;
+}
+.todo-star:hover { opacity: 0.8; }
+.todo-item.important .todo-star { opacity: 1; }
 
 .todo-check {
   width: 16px;
@@ -2698,8 +2733,10 @@ body.dark .todo-title { color: #E8E8E8; }
 body.dark .todo-count { color: #777; }
 body.dark .todo-item { border-color: #2A2A2A; }
 body.dark .todo-item:hover { background: #2A2A2A; }
+body.dark .todo-item.todo-drag-over { background: #2A2A2A; }
 body.dark .todo-item-text { color: #D0D0D0; }
 body.dark .todo-item.done .todo-item-text { color: #666; }
+body.dark .todo-drag { color: #E8E8E8; }
 body.dark .todo-check { border-color: #555; background: none; }
 body.dark .todo-add-btn { border-color: #2A2A2A; color: #666; }
 body.dark .todo-add-btn:hover { background: #2A2A2A; color: #E8E8E8; }

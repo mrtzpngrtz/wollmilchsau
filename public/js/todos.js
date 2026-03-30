@@ -1,6 +1,7 @@
 /* === TODO LIST — Canvas Element === */
 const Todos = {
   _cachedUsers: null,
+  _dragging: null, // { el, data, fromIdx }
 
   async getUsers() {
     if (this._cachedUsers) return this._cachedUsers;
@@ -28,10 +29,12 @@ const Todos = {
         ? `<span class="todo-assignee" title="${Utils.escapeAttr(item.assignee)}">${Utils.escapeHtml(item.assignee).substring(0, 2).toUpperCase()}</span>`
         : '';
       html += `
-        <div class="todo-item ${item.done ? 'done' : ''}" data-todo-idx="${idx}">
+        <div class="todo-item ${item.done ? 'done' : ''}${item.important ? ' important' : ''}" data-todo-idx="${idx}" draggable="true">
+          <span class="todo-drag" title="Drag to reorder">⠿</span>
           <button class="todo-check" data-todo-idx="${idx}" title="Toggle">${item.done ? '✓' : ''}</button>
           <span class="todo-item-text">${Utils.escapeHtml(item.text)}</span>
           ${assigneeHtml}
+          <button class="todo-star" data-todo-idx="${idx}" title="${item.important ? 'Unmark important' : 'Mark important'}">${item.important ? '★' : '☆'}</button>
         </div>`;
     });
 
@@ -49,6 +52,19 @@ const Todos = {
         const idx = parseInt(btn.dataset.todoIdx);
         if (data.items && data.items[idx] !== undefined) {
           data.items[idx].done = !data.items[idx].done;
+          this.refresh(el, data);
+          App.saveState();
+        }
+      });
+    });
+
+    // Star / important toggle
+    el.querySelectorAll('.todo-star').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.todoIdx);
+        if (data.items && data.items[idx] !== undefined) {
+          data.items[idx].important = !data.items[idx].important;
           this.refresh(el, data);
           App.saveState();
         }
@@ -82,7 +98,7 @@ const Todos = {
       });
     });
 
-    // Right-click on item for delete / assign
+    // Right-click on item for context menu
     el.querySelectorAll('.todo-item').forEach(itemEl => {
       itemEl.addEventListener('contextmenu', (e) => {
         e.preventDefault();
@@ -91,6 +107,63 @@ const Todos = {
         this.showItemMenu(el, data, idx, e.clientX, e.clientY);
       });
     });
+
+    // Drag-to-reorder
+    this._bindDrag(el, data);
+  },
+
+  /** HTML5 drag-to-reorder */
+  _bindDrag(el, data) {
+    const container = el.querySelector('.todo-items');
+    if (!container) return;
+
+    el.querySelectorAll('.todo-item').forEach(itemEl => {
+      itemEl.addEventListener('dragstart', (e) => {
+        // Only initiate drag from the handle
+        if (!e.target.closest('.todo-drag') && e.target !== itemEl) {
+          e.preventDefault(); return;
+        }
+        this._dragging = { fromIdx: parseInt(itemEl.dataset.todoIdx) };
+        itemEl.classList.add('todo-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', itemEl.dataset.todoIdx);
+        e.stopPropagation();
+      });
+
+      itemEl.addEventListener('dragend', (e) => {
+        e.stopPropagation();
+        itemEl.classList.remove('todo-dragging');
+        container.querySelectorAll('.todo-item').forEach(i => i.classList.remove('todo-drag-over'));
+        this._dragging = null;
+      });
+
+      itemEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        container.querySelectorAll('.todo-item').forEach(i => i.classList.remove('todo-drag-over'));
+        itemEl.classList.add('todo-drag-over');
+      });
+
+      itemEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        itemEl.classList.remove('todo-drag-over');
+        if (!this._dragging) return;
+        const fromIdx = this._dragging.fromIdx;
+        const toIdx   = parseInt(itemEl.dataset.todoIdx);
+        if (fromIdx === toIdx) return;
+
+        const items = data.items;
+        const [moved] = items.splice(fromIdx, 1);
+        items.splice(toIdx, 0, moved);
+        this.refresh(el, data);
+        App.saveState();
+      });
+    });
+
+    // Allow drop on the container itself (end of list)
+    container.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
   },
 
   /** Refresh the todo element DOM */
@@ -100,10 +173,8 @@ const Todos = {
     inner.innerHTML = this.renderInner(data);
     this.bindEvents(el, data);
 
-    // Update element height to fit content
     const contentHeight = inner.scrollHeight;
-    const minHeight = 120;
-    const newHeight = Math.max(minHeight, contentHeight + 4);
+    const newHeight = Math.max(120, contentHeight + 4);
     data.height = newHeight;
     el.style.height = newHeight + 'px';
   },
@@ -129,7 +200,7 @@ const Todos = {
       const text = input.value.trim();
       if (text) {
         if (!data.items) data.items = [];
-        data.items.push({ text, done: false, assignee: '' });
+        data.items.push({ text, done: false, assignee: '', important: false });
         this.refresh(el, data);
         App.saveState();
       } else {
@@ -164,9 +235,7 @@ const Todos = {
 
     const doSave = () => {
       const newText = input.value.trim();
-      if (newText) {
-        item.text = newText;
-      }
+      if (newText) item.text = newText;
       this.refresh(el, data);
       App.saveState();
     };
@@ -179,16 +248,22 @@ const Todos = {
     });
   },
 
-  /** Show a small context menu for a todo item (assign / delete) */
+  /** Show a small context menu for a todo item */
   showItemMenu(el, data, idx, x, y) {
-    // Remove existing menu
     document.querySelectorAll('.todo-ctx-menu').forEach(m => m.remove());
 
+    const item = data.items[idx];
     const menu = document.createElement('div');
     menu.className = 'todo-ctx-menu';
     menu.style.left = x + 'px';
-    menu.style.top = y + 'px';
+    menu.style.top  = y + 'px';
     menu.innerHTML = `
+      <div class="todo-ctx-item" data-action="important">${item?.important ? '☆ UNMARK IMPORTANT' : '★ MARK IMPORTANT'}</div>
+      <div class="todo-ctx-separator"></div>
+      <div class="todo-ctx-item" data-action="sort-important">SORT — IMPORTANT FIRST</div>
+      <div class="todo-ctx-item" data-action="sort-done">SORT — UNDONE FIRST</div>
+      <div class="todo-ctx-item" data-action="sort-alpha">SORT — A → Z</div>
+      <div class="todo-ctx-separator"></div>
       <div class="todo-ctx-item" data-action="assign">ASSIGN USER</div>
       <div class="todo-ctx-item" data-action="unassign">REMOVE ASSIGNEE</div>
       <div class="todo-ctx-separator"></div>
@@ -196,45 +271,57 @@ const Todos = {
     `;
     document.body.appendChild(menu);
 
-    // Keep within viewport
     const rect = menu.getBoundingClientRect();
-    if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + 'px';
-    if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+    if (rect.right  > window.innerWidth)  menu.style.left = (x - rect.width) + 'px';
+    if (rect.bottom > window.innerHeight) menu.style.top  = (y - rect.height) + 'px';
 
     const close = () => { menu.remove(); document.removeEventListener('click', close); };
     setTimeout(() => document.addEventListener('click', close), 0);
 
+    menu.querySelector('[data-action="important"]').addEventListener('click', (e) => {
+      e.stopPropagation(); menu.remove();
+      if (data.items[idx]) { data.items[idx].important = !data.items[idx].important; this.refresh(el, data); App.saveState(); }
+    });
+
+    menu.querySelector('[data-action="sort-important"]').addEventListener('click', (e) => {
+      e.stopPropagation(); menu.remove();
+      data.items.sort((a, b) => (b.important ? 1 : 0) - (a.important ? 1 : 0));
+      this.refresh(el, data); App.saveState();
+    });
+
+    menu.querySelector('[data-action="sort-done"]').addEventListener('click', (e) => {
+      e.stopPropagation(); menu.remove();
+      data.items.sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
+      this.refresh(el, data); App.saveState();
+    });
+
+    menu.querySelector('[data-action="sort-alpha"]').addEventListener('click', (e) => {
+      e.stopPropagation(); menu.remove();
+      data.items.sort((a, b) => a.text.localeCompare(b.text));
+      this.refresh(el, data); App.saveState();
+    });
+
     menu.querySelector('[data-action="assign"]').addEventListener('click', (e) => {
-      e.stopPropagation();
-      menu.remove();
+      e.stopPropagation(); menu.remove();
       const itemEl = el.querySelector(`[data-todo-idx="${idx}"]`);
       if (itemEl) this.showAssignPicker(el, data, idx, itemEl);
     });
 
     menu.querySelector('[data-action="unassign"]').addEventListener('click', (e) => {
-      e.stopPropagation();
-      menu.remove();
-      if (data.items[idx]) {
-        data.items[idx].assignee = '';
-        this.refresh(el, data);
-        App.saveState();
-      }
+      e.stopPropagation(); menu.remove();
+      if (data.items[idx]) { data.items[idx].assignee = ''; this.refresh(el, data); App.saveState(); }
     });
 
     menu.querySelector('[data-action="delete"]').addEventListener('click', (e) => {
-      e.stopPropagation();
-      menu.remove();
+      e.stopPropagation(); menu.remove();
       data.items.splice(idx, 1);
-      this.refresh(el, data);
-      App.saveState();
+      this.refresh(el, data); App.saveState();
     });
   },
 
   /** Show user picker dropdown to assign a user */
   async showAssignPicker(el, data, idx, anchorEl) {
     const users = await this.getUsers();
-
-    // Remove existing picker
     document.querySelectorAll('.todo-user-picker').forEach(p => p.remove());
 
     const picker = document.createElement('div');
@@ -242,7 +329,7 @@ const Todos = {
 
     const rect = anchorEl.getBoundingClientRect();
     picker.style.left = rect.left + 'px';
-    picker.style.top = (rect.bottom + 4) + 'px';
+    picker.style.top  = (rect.bottom + 4) + 'px';
 
     let html = '<div class="todo-picker-header">ASSIGN TO</div>';
     html += `<div class="todo-picker-option" data-user="">— None —</div>`;
@@ -253,10 +340,9 @@ const Todos = {
     picker.innerHTML = html;
     document.body.appendChild(picker);
 
-    // Keep within viewport
     const pRect = picker.getBoundingClientRect();
-    if (pRect.right > window.innerWidth) picker.style.left = (window.innerWidth - pRect.width - 8) + 'px';
-    if (pRect.bottom > window.innerHeight) picker.style.top = (rect.top - pRect.height - 4) + 'px';
+    if (pRect.right  > window.innerWidth)  picker.style.left = (window.innerWidth - pRect.width - 8) + 'px';
+    if (pRect.bottom > window.innerHeight) picker.style.top  = (rect.top - pRect.height - 4) + 'px';
 
     const close = () => { picker.remove(); document.removeEventListener('click', close); };
     setTimeout(() => document.addEventListener('click', close), 0);
@@ -264,11 +350,7 @@ const Todos = {
     picker.querySelectorAll('.todo-picker-option').forEach(opt => {
       opt.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (data.items[idx]) {
-          data.items[idx].assignee = opt.dataset.user;
-          this.refresh(el, data);
-          App.saveState();
-        }
+        if (data.items[idx]) { data.items[idx].assignee = opt.dataset.user; this.refresh(el, data); App.saveState(); }
         close();
       });
     });

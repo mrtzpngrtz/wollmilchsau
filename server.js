@@ -7,6 +7,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
 const { WebSocketServer } = require('ws');
+const { authenticator } = require('otplib');
+const QRCode = require('qrcode');
 
 const app = express();
 const PORT = 3000;
@@ -116,6 +118,13 @@ app.use(sessionMiddleware);
 
 // Auth middleware
 function requireAuth(req, res, next) {
+  if (req.session && req.session.pendingTwoFactor) {
+    // Password verified but 2FA not yet confirmed
+    if (req.xhr || req.headers.accept?.includes('json')) {
+      return res.status(401).json({ error: 'Two-factor authentication required' });
+    }
+    return res.redirect('/login');
+  }
   if (req.session && req.session.user) return next();
   if (req.xhr || req.headers.accept?.includes('json')) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -182,6 +191,12 @@ app.post('/api/auth/login', (req, res) => {
   if (idx >= 0) {
     users[idx].lastLogin = new Date().toISOString();
     saveUsers(users);
+  }
+
+  // If 2FA is enabled, require a second step
+  if (user.twoFactorEnabled && user.twoFactorSecret) {
+    req.session.pendingTwoFactor = { userId: user.id };
+    return res.json({ requiresTwoFactor: true });
   }
 
   req.session.user = {
@@ -262,6 +277,101 @@ app.post('/api/auth/logout', (req, res) => {
   req.session.destroy(() => {
     res.json({ success: true });
   });
+});
+
+// ─── TWO-FACTOR AUTHENTICATION ───────────────────────────
+
+// Step 1: Generate a TOTP secret + QR code (setup)
+app.post('/api/auth/2fa/setup', requireAuth, async (req, res) => {
+  const users = loadUsers();
+  const user = users.find(u => u.id === req.session.user.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (user.twoFactorEnabled) return res.status(400).json({ error: '2FA is already enabled' });
+
+  const secret = authenticator.generateSecret();
+  // Store temporarily in session until confirmed
+  req.session.pendingTwoFactorSetup = secret;
+
+  const otpauthUrl = authenticator.keyuri(user.username, 'WOLLMILCHSAU', secret);
+  const qrDataUrl = await QRCode.toDataURL(otpauthUrl);
+
+  res.json({ secret, qrDataUrl });
+});
+
+// Step 2: Verify code and activate 2FA
+app.post('/api/auth/2fa/verify-setup', requireAuth, (req, res) => {
+  const { code } = req.body;
+  const secret = req.session.pendingTwoFactorSetup;
+  if (!secret) return res.status(400).json({ error: 'No pending 2FA setup. Start setup first.' });
+  if (!code) return res.status(400).json({ error: 'Code is required' });
+
+  const isValid = authenticator.verify({ token: String(code).replace(/\s/g, ''), secret });
+  if (!isValid) return res.status(400).json({ error: 'Invalid code. Try again.' });
+
+  const users = loadUsers();
+  const idx = users.findIndex(u => u.id === req.session.user.id);
+  if (idx < 0) return res.status(404).json({ error: 'User not found' });
+
+  users[idx].twoFactorSecret = secret;
+  users[idx].twoFactorEnabled = true;
+  saveUsers(users);
+  delete req.session.pendingTwoFactorSetup;
+
+  res.json({ success: true });
+});
+
+// Login step 2: Verify TOTP code after password
+app.post('/api/auth/2fa/verify-login', (req, res) => {
+  const { code } = req.body;
+  if (!req.session.pendingTwoFactor) return res.status(400).json({ error: 'No pending 2FA login' });
+
+  const { userId } = req.session.pendingTwoFactor;
+  const users = loadUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user || !user.twoFactorSecret) return res.status(400).json({ error: 'Invalid session' });
+
+  const isValid = authenticator.verify({ token: String(code).replace(/\s/g, ''), secret: user.twoFactorSecret });
+  if (!isValid) return res.status(401).json({ error: 'Invalid code' });
+
+  delete req.session.pendingTwoFactor;
+  req.session.user = {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    role: user.role,
+  };
+
+  res.json({
+    success: true,
+    user: { id: user.id, username: user.username, displayName: user.displayName, role: user.role },
+  });
+});
+
+// Disable 2FA (requires current password)
+app.post('/api/auth/2fa/disable', requireAuth, (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Current password is required' });
+
+  const users = loadUsers();
+  const idx = users.findIndex(u => u.id === req.session.user.id);
+  if (idx < 0) return res.status(404).json({ error: 'User not found' });
+
+  if (!bcrypt.compareSync(password, users[idx].passwordHash)) {
+    return res.status(401).json({ error: 'Incorrect password' });
+  }
+
+  users[idx].twoFactorEnabled = false;
+  delete users[idx].twoFactorSecret;
+  saveUsers(users);
+
+  res.json({ success: true });
+});
+
+// 2FA status for current user
+app.get('/api/auth/2fa/status', requireAuth, (req, res) => {
+  const users = loadUsers();
+  const user = users.find(u => u.id === req.session.user.id);
+  res.json({ enabled: !!(user && user.twoFactorEnabled) });
 });
 
 app.get('/api/auth/me', (req, res) => {

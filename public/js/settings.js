@@ -8,6 +8,7 @@ const Settings = {
     this.initProfileSave();
     this.initLLMSave();
     this.initCalendar();
+    this.initSecurity();
     document.querySelector('[data-section="stats"]').addEventListener('click', () => this.loadStats());
 
     // Handle redirect back from Google OAuth
@@ -172,6 +173,86 @@ const Settings = {
     document.getElementById('gcal-connected-ui')?.classList.toggle('hidden', !connected);
     document.getElementById('gcal-disconnected-ui')?.classList.toggle('hidden', connected || !configured);
     document.getElementById('gcal-needs-creds')?.classList.toggle('hidden', configured || connected);
+  },
+
+  async initSecurity() {
+    await this._refreshTwoFaStatus();
+
+    // Setup button — starts the QR flow
+    document.getElementById('twofa-setup-btn')?.addEventListener('click', async () => {
+      const res = await fetch('/api/auth/2fa/setup', { method: 'POST' });
+      if (!res.ok) { const d = await res.json(); this.toast(d.error || 'Setup failed', true); return; }
+      const { secret, qrDataUrl } = await res.json();
+
+      document.getElementById('twofa-qr').innerHTML = `<img src="${qrDataUrl}" alt="QR Code" style="width:160px;height:160px;border:1px solid var(--light-grey);">`;
+      document.getElementById('twofa-secret-text').textContent = secret.replace(/(.{4})/g, '$1 ').trim();
+      document.getElementById('twofa-confirm-code').value = '';
+      document.getElementById('twofa-setup-error').classList.add('hidden');
+
+      document.getElementById('twofa-disabled-ui').classList.add('hidden');
+      document.getElementById('twofa-setup-ui').classList.remove('hidden');
+      document.getElementById('twofa-confirm-code').focus();
+    });
+
+    // Format code input
+    document.getElementById('twofa-confirm-code')?.addEventListener('input', (e) => {
+      let v = e.target.value.replace(/\D/g, '').slice(0, 6);
+      if (v.length > 3) v = v.slice(0, 3) + ' ' + v.slice(3);
+      e.target.value = v;
+    });
+
+    // Activate button — verify code and enable
+    document.getElementById('twofa-activate-btn')?.addEventListener('click', async () => {
+      const code = document.getElementById('twofa-confirm-code').value.replace(/\s/g, '');
+      const errEl = document.getElementById('twofa-setup-error');
+      if (code.length !== 6) { errEl.textContent = 'Enter the 6-digit code from your app.'; errEl.classList.remove('hidden'); return; }
+
+      const res = await fetch('/api/auth/2fa/verify-setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'Invalid code'; errEl.classList.remove('hidden'); return; }
+
+      document.getElementById('twofa-setup-ui').classList.add('hidden');
+      this.toast('Two-factor authentication enabled!');
+      await this._refreshTwoFaStatus();
+    });
+
+    // Cancel setup
+    document.getElementById('twofa-cancel-btn')?.addEventListener('click', async () => {
+      document.getElementById('twofa-setup-ui').classList.add('hidden');
+      await this._refreshTwoFaStatus();
+    });
+
+    // Disable 2FA
+    document.getElementById('twofa-disable-btn')?.addEventListener('click', async () => {
+      const pw = document.getElementById('twofa-disable-pw').value;
+      if (!pw) { this.toast('Enter your current password.', true); return; }
+
+      const res = await fetch('/api/auth/2fa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      const data = await res.json();
+      if (!res.ok) { this.toast(data.error || 'Failed to disable 2FA', true); return; }
+
+      document.getElementById('twofa-disable-pw').value = '';
+      this.toast('Two-factor authentication disabled.');
+      await this._refreshTwoFaStatus();
+    });
+  },
+
+  async _refreshTwoFaStatus() {
+    const res = await fetch('/api/auth/2fa/status');
+    if (!res.ok) return;
+    const { enabled } = await res.json();
+
+    document.getElementById('twofa-enabled-ui').classList.toggle('hidden', !enabled);
+    document.getElementById('twofa-disabled-ui').classList.toggle('hidden', enabled);
+    document.getElementById('twofa-setup-ui').classList.add('hidden');
   },
 
   async loadStats() {

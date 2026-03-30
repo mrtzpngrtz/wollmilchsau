@@ -69,6 +69,20 @@
         <button type="submit" class="form-submit">CREATE ACCOUNT →</button>
       </form>
 
+      <!-- 2FA Step -->
+      <div id="twofa-step" class="login-form hidden">
+        <div class="form-group">
+          <label class="form-label">AUTHENTICATOR CODE</label>
+          <input type="text" id="twofa-code" class="form-input" placeholder="000 000"
+            inputmode="numeric" autocomplete="one-time-code" maxlength="7" />
+        </div>
+        <div id="twofa-error" class="form-error hidden"></div>
+        <button type="button" id="twofa-submit" class="form-submit">VERIFY →</button>
+        <div style="margin-top:12px;text-align:center">
+          <button type="button" id="twofa-back" style="background:none;border:none;font-family:var(--font-mono);font-size:9px;letter-spacing:1px;color:var(--dark-grey);cursor:pointer;text-decoration:underline;">← BACK TO LOGIN</button>
+        </div>
+      </div>
+
       <!-- Footer -->
       <div class="login-footer">
         <span class="footer-coord">48°08'N</span>
@@ -119,6 +133,67 @@
       el.classList.remove('hidden');
     }
 
+    // 2FA step
+    const twofaStep = document.getElementById('twofa-step');
+    const twofaCode = document.getElementById('twofa-code');
+    const twofaError = document.getElementById('twofa-error');
+
+    function showTwoFa() {
+      loginForm.classList.add('hidden');
+      document.querySelector('.login-tabs').classList.add('hidden');
+      twofaStep.classList.remove('hidden');
+      twofaCode.value = '';
+      twofaCode.focus();
+    }
+
+    function hideTwoFa() {
+      twofaStep.classList.add('hidden');
+      document.querySelector('.login-tabs').classList.remove('hidden');
+      loginForm.classList.remove('hidden');
+      twofaError.classList.add('hidden');
+    }
+
+    document.getElementById('twofa-back').addEventListener('click', () => hideTwoFa());
+
+    // Format code input as "000 000"
+    twofaCode.addEventListener('input', () => {
+      let v = twofaCode.value.replace(/\D/g, '').slice(0, 6);
+      if (v.length > 3) v = v.slice(0, 3) + ' ' + v.slice(3);
+      twofaCode.value = v;
+    });
+
+    async function submitTwoFa() {
+      const code = twofaCode.value.replace(/\s/g, '');
+      if (code.length !== 6) {
+        twofaError.textContent = 'Enter the 6-digit code';
+        twofaError.classList.remove('hidden');
+        return;
+      }
+      twofaError.classList.add('hidden');
+      try {
+        const res = await fetch('/api/auth/2fa/verify-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = '/';
+        } else {
+          twofaError.textContent = data.error || 'Invalid code';
+          twofaError.classList.remove('hidden');
+          twofaCode.value = '';
+          twofaCode.focus();
+        }
+      } catch (err) {
+        twofaError.textContent = 'Connection error';
+        twofaError.classList.remove('hidden');
+      }
+    }
+
+    document.getElementById('twofa-submit').addEventListener('click', submitTwoFa);
+    twofaCode.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitTwoFa(); });
+
     // Login
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -140,6 +215,8 @@
         const data = await res.json();
         if (data.success) {
           window.location.href = '/';
+        } else if (data.requiresTwoFactor) {
+          showTwoFa();
         } else {
           showError('login-error', data.error || 'Login failed');
         }

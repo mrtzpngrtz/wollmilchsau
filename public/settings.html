@@ -38,8 +38,11 @@
       <a class="nav-item" data-section="calendar" href="#">
         <span class="nav-idx">03</span> CALENDAR
       </a>
+      <a class="nav-item" data-section="security" href="#">
+        <span class="nav-idx">04</span> SECURITY
+      </a>
       <a class="nav-item" data-section="stats" href="#">
-        <span class="nav-idx">04</span> STATISTICS
+        <span class="nav-idx">05</span> STATISTICS
       </a>
     </nav>
 
@@ -174,10 +177,61 @@
         </div>
       </section>
 
+      <!-- ── SECURITY ── -->
+      <section id="section-security" class="settings-section">
+        <div class="section-header">
+          <span class="section-idx">04</span>
+          <h1>SECURITY</h1>
+        </div>
+
+        <div class="settings-divider">TWO-FACTOR AUTHENTICATION</div>
+
+        <!-- Status: enabled -->
+        <div id="twofa-enabled-ui" class="hidden">
+          <div class="settings-group">
+            <label class="settings-label">STATUS</label>
+            <div class="settings-value" style="color:#27ae60">✓ 2FA IS ACTIVE</div>
+            <div class="settings-hint">Your account is protected with an authenticator app.</div>
+          </div>
+          <div class="settings-group">
+            <label class="settings-label" for="twofa-disable-pw">CONFIRM PASSWORD TO DISABLE</label>
+            <input type="password" id="twofa-disable-pw" placeholder="Current password" autocomplete="current-password">
+          </div>
+          <button class="btn-save btn-secondary" id="twofa-disable-btn">DISABLE 2FA →</button>
+        </div>
+
+        <!-- Status: disabled -->
+        <div id="twofa-disabled-ui" class="hidden">
+          <div class="settings-group">
+            <label class="settings-label">STATUS</label>
+            <div class="settings-value" style="color:var(--dark-grey)">NOT ENABLED</div>
+            <div class="settings-hint">Add an extra layer of security. Use any TOTP app like Google Authenticator, Authy, or 1Password.</div>
+          </div>
+          <button class="btn-save" id="twofa-setup-btn">SET UP 2FA →</button>
+        </div>
+
+        <!-- Setup flow -->
+        <div id="twofa-setup-ui" class="hidden">
+          <div class="settings-group">
+            <label class="settings-label">SCAN QR CODE</label>
+            <div class="settings-hint">Open your authenticator app and scan this code.</div>
+            <div id="twofa-qr" style="margin:16px 0;line-height:0;"></div>
+            <div class="settings-hint">Or enter this key manually: <code id="twofa-secret-text" style="font-family:var(--font-mono);letter-spacing:2px;font-size:11px;"></code></div>
+          </div>
+          <div class="settings-group">
+            <label class="settings-label" for="twofa-confirm-code">ENTER 6-DIGIT CODE TO CONFIRM</label>
+            <input type="text" id="twofa-confirm-code" placeholder="000 000" inputmode="numeric" autocomplete="off" maxlength="7">
+          </div>
+          <div id="twofa-setup-error" class="settings-hint hidden" style="color:var(--accent)"></div>
+          <button class="btn-save" id="twofa-activate-btn">ACTIVATE →</button>
+          <button class="btn-save btn-secondary" id="twofa-cancel-btn" style="margin-left:8px">CANCEL</button>
+        </div>
+      </section>
+
       <!-- ── STATISTICS ── -->
       <section id="section-stats" class="settings-section">
         <div class="section-header">
-          <span class="section-idx">03</span>
+          <span class="section-idx">05</span>
           <h1>STATISTICS</h1>
         </div>
 

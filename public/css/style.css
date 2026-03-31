@@ -3507,7 +3507,7 @@ body.dark #profile-llm-provider {
   background: var(--white);
   border: 1px solid var(--black);
   font-family: var(--font-mono);
-  overflow: hidden;
+  overflow: visible;
   position: relative;
   user-select: none;
 }

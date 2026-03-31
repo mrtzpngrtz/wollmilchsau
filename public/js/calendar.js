@@ -341,17 +341,22 @@ const CalendarEl = {
     popup.style.left = '0';
     popup.classList.remove('hidden');
 
+    // getBoundingClientRect() returns screen pixels (affected by canvas zoom).
+    // popup.style.top/left are CSS local pixels (pre-zoom). Divide by zoom to convert.
+    const zoom      = (typeof Canvas !== 'undefined' && Canvas.zoom) ? Canvas.zoom : 1;
     const innerRect = inner.getBoundingClientRect();
     const dayRect   = dayEl.getBoundingClientRect();
     const popupW    = popup.offsetWidth;
     const popupH    = popup.offsetHeight;
+    const localW    = inner.offsetWidth;
+    const localH    = inner.offsetHeight;
 
-    let top  = dayRect.bottom - innerRect.top + 4;
-    let left = dayRect.left   - innerRect.left - 12;
+    let top  = (dayRect.bottom - innerRect.top) / zoom + 4;
+    let left = (dayRect.left   - innerRect.left) / zoom - 12;
 
-    if (left + popupW > innerRect.width - 4) left = innerRect.width - popupW - 4;
+    if (left + popupW > localW - 4) left = localW - popupW - 4;
     left = Math.max(4, left);
-    if (top + popupH > innerRect.height - 4) top = dayRect.top - innerRect.top - popupH - 4;
+    if (top + popupH > localH - 4) top = (dayRect.top - innerRect.top) / zoom - popupH - 4;
     top = Math.max(4, top);
 
     popup.style.top  = top + 'px';

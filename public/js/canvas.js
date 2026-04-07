@@ -87,7 +87,7 @@ const Canvas = {
 
     // Space key for pan
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' && !e.target.closest('[contenteditable]') && e.target.tagName !== 'INPUT') {
+      if (e.code === 'Space' && !e.target.closest('[contenteditable]') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
         e.preventDefault();
         this.spaceDown = true;
         this.container.classList.add('panning');

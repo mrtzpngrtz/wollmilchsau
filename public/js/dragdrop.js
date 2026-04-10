@@ -32,7 +32,7 @@ const DragDrop = {
     });
 
     document.addEventListener('dragover', (e) => {
-      e.preventDefault();
+      if (isFileDrag(e)) e.preventDefault();
     });
 
     document.addEventListener('drop', async (e) => {
@@ -125,6 +125,12 @@ const DragDrop = {
         toast.querySelector('.upload-toast-pct').textContent = '✓';
         setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 600);
       },
+      fail() {
+        toast.querySelector('.upload-toast-bar-fill').style.width = '100%';
+        toast.querySelector('.upload-toast-bar-fill').style.background = 'var(--red, #e53e3e)';
+        toast.querySelector('.upload-toast-pct').textContent = '✗';
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 1500);
+      },
     };
   },
 
@@ -169,7 +175,7 @@ const DragDrop = {
       Canvas.updateMinimap();
     } catch (err) {
       console.error('Upload failed:', err);
-      toast.done();
+      toast.fail();
     }
   },
 };

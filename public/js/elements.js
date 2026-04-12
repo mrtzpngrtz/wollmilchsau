@@ -153,7 +153,7 @@ const Elements = {
       case 'text':
         inner = document.createElement('div');
         inner.className = 'el-text' + (data.boxed ? ' el-text--boxed' : '');
-        inner.innerHTML = data.content || '';
+        inner.innerHTML = DOMPurify.sanitize(data.content || '', { ALLOWED_TAGS: ['b','strong','i','em','u','br'] });
         inner.style.fontSize = (data.fontSize || 14) + 'px';
         inner.style.color = data.color || '#111111';
         inner.style.textAlign = data.textAlign || 'left';
@@ -183,7 +183,7 @@ const Elements = {
       case 'heading':
         inner = document.createElement('div');
         inner.className = 'el-heading';
-        inner.innerHTML = data.content || '';
+        inner.innerHTML = DOMPurify.sanitize(data.content || '', { ALLOWED_TAGS: ['b','strong','i','em','u','br'] });
         inner.style.fontSize = (data.fontSize || 50) + 'px';
         inner.style.color = data.color || '#111111';
         inner.style.fontWeight = data.fontWeight || '700';
@@ -196,7 +196,7 @@ const Elements = {
         if (data.noteColor && data.noteColor !== 'default') {
           inner.classList.add('note-' + data.noteColor);
         }
-        inner.innerHTML = data.content || '';
+        inner.innerHTML = DOMPurify.sanitize(data.content || '', { ALLOWED_TAGS: ['b','strong','i','em','u','br'] });
         inner.style.width = '100%';
         inner.style.height = '100%';
         el.appendChild(inner);

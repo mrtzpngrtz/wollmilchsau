@@ -8,6 +8,12 @@ const fs = require('fs');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
+const { rateLimit } = require('express-rate-limit');
+
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many login attempts, try again later' } });
+const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many registration attempts, try again later' } });
+const twoFaLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many 2FA attempts, try again later' } });
+const llmLimiter = rateLimit({ windowMs: 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests, slow down' } });
 
 // ── Minimal TOTP (RFC 6238) — no external dependency ──────────────────────
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -144,14 +150,19 @@ migrateOldBoards();
 // ═══════════════════════════════════════════════════════
 app.use(express.json({ limit: '50mb' }));
 
+if (!process.env.SESSION_SECRET) {
+  console.error('FATAL: SESSION_SECRET environment variable is not set. Set it before starting the server.');
+  process.exit(1);
+}
 const sessionMiddleware = session({
-  secret: 'wollmilchsau-secret-' + (process.env.SESSION_SECRET || 'dev-2026'),
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
   },
 });
 app.use(sessionMiddleware);
@@ -217,7 +228,7 @@ app.get('/share/:token', (req, res) => {
 // ═══════════════════════════════════════════════════════
 //  AUTH API
 // ═══════════════════════════════════════════════════════
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
 
@@ -263,7 +274,7 @@ app.get('/api/config/public', (req, res) => {
   res.json({ registrationEnabled });
 });
 
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', registerLimiter, (req, res) => {
   const { registrationEnabled } = loadSettings();
   if (!registrationEnabled) return res.status(403).json({ error: 'Registration is currently disabled' });
 
@@ -361,7 +372,7 @@ app.post('/api/auth/2fa/verify-setup', requireAuth, (req, res) => {
 });
 
 // Login step 2: Verify TOTP code after password
-app.post('/api/auth/2fa/verify-login', (req, res) => {
+app.post('/api/auth/2fa/verify-login', twoFaLimiter, (req, res) => {
   const { code } = req.body;
   if (!req.session.pendingTwoFactor) return res.status(400).json({ error: 'No pending 2FA login' });
 
@@ -483,15 +494,30 @@ const storage = multer.diskStorage({
     cb(null, unique + ext);
   },
 });
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+const ALLOWED_UPLOAD_MIME = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif',
+  'application/pdf',
+  'video/mp4', 'video/webm', 'video/ogg',
+  'text/plain',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
+const uploadFileFilter = (req, file, cb) => {
+  if (ALLOWED_UPLOAD_MIME.has(file.mimetype)) cb(null, true);
+  else cb(Object.assign(new Error('File type not allowed'), { status: 415 }));
+};
+const upload = multer({ storage, fileFilter: uploadFileFilter, limits: { fileSize: 50 * 1024 * 1024 } });
 
-app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  res.json({
-    url: '/uploads/' + req.file.filename,
-    originalName: req.file.originalname,
-    size: req.file.size,
-    mimetype: req.file.mimetype,
+app.post('/api/upload', requireAuth, (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) return res.status(err.status || 400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    res.json({
+      url: '/uploads/' + req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+    });
   });
 });
 
@@ -736,7 +762,7 @@ app.get('/api/boards/:owner/:name', requireAuth, (req, res) => {
   }
 
   const filePath = path.join(__dirname, 'data', 'boards', owner, name + '.json');
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Board not found' });
+  if (!fs.existsSync(filePath)) return res.status(403).json({ error: 'Access denied' });
 
   const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   const collabs = data.meta?.collaborators || [];
@@ -1484,7 +1510,7 @@ app.get('/api/calendar/events', requireAuth, async (req, res) => {
 // ═══════════════════════════════════════════════════════
 //  LLM PROXY (server-side, uses stored user API key)
 // ═══════════════════════════════════════════════════════
-app.post('/api/llm/chat', requireAuth, async (req, res) => {
+app.post('/api/llm/chat', requireAuth, llmLimiter, async (req, res) => {
   const { messages, model } = req.body;
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array required' });

@@ -179,6 +179,8 @@
         const data = await res.json();
         if (data.success) {
           window.location.href = '/';
+        } else if (res.status === 400 && data.error && data.error.includes('pending')) {
+          window.location.href = '/login';
         } else {
           twofaError.textContent = data.error || 'Invalid code';
           twofaError.classList.remove('hidden');

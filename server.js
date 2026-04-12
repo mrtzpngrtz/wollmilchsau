@@ -149,6 +149,7 @@ migrateOldBoards();
 //  MIDDLEWARE
 // ═══════════════════════════════════════════════════════
 app.use(express.json({ limit: '50mb' }));
+app.set('trust proxy', 1); // trust first proxy (Coolify/nginx)
 
 if (!process.env.SESSION_SECRET) {
   console.error('FATAL: SESSION_SECRET environment variable is not set. Set it before starting the server.');

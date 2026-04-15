@@ -1,4 +1,4 @@
-/* === WOLLMILCHSAU — Admin CMS === */
+/* === SAMESAMEBUTDIFFERENT — Admin CMS === */
 const Admin = {
   currentUser: null,
 
@@ -28,7 +28,7 @@ const Admin = {
 
     document.getElementById('btn-add-user').addEventListener('click', () => this.showCreateUserModal());
 
-    console.log('WOLLMILCHSAU Admin — Ready');
+    console.log('SAMESAMEBUTDIFFERENT Admin — Ready');
   },
 
   // ═══ NAVIGATION ═══

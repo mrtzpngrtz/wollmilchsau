@@ -1,4 +1,4 @@
-/* === WOLLMILCHSAU — Home Page === */
+/* === SAMESAMEBUTDIFFERENT — Home Page === */
 const Home = {
   async init() {
     await this.loadCurrentUser();

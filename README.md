@@ -1,4 +1,4 @@
-# WOLLMILCHSAU
+# SAMESAMEBUTDIFFERENT
 
 Infinite canvas that can do it all.
 
@@ -67,7 +67,7 @@ Infinite canvas that can do it all.
 
 ## UX & Design Philosophy
 
-The core of **WOLLMILCHSAU** is built around an uncompromising focus on flow, immediacy, and spatial freedom:
+The core of **SAMESAMEBUTDIFFERENT** is built around an uncompromising focus on flow, immediacy, and spatial freedom:
 
 - **Unobtrusive Interface:** The UI gets out of the way. Tools and properties only appear contextually when needed, maximising the space for ideas on the infinite canvas.
 - **Immediate Feedback:** Every action feels instantaneous because we rely on fast Vanilla JS and native DOM/SVG manipulations instead of heavy frameworks.

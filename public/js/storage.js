@@ -243,7 +243,7 @@ const Storage = {
   updateBoardName() {
     const el = document.getElementById('current-board-name');
     if (el) el.textContent = this.currentBoard;
-    document.title = `WOLLMILCHSAU — ${this.currentBoard}`;
+    document.title = `SAMESAMEBUTDIFFERENT — ${this.currentBoard}`;
   },
 
   getBoardApiPath(name, owner) {

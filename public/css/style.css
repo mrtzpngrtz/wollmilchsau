@@ -22,9 +22,9 @@
   --font-mono: 'Roboto Mono', 'Courier New', Courier, monospace;
 
   --topbar-h: 40px;
-  --border: 1px solid var(--black);
-  --border-light: 1px solid var(--light-grey);
-  --border-mid: 1px solid var(--mid-grey);
+  --border: 0.5px solid var(--black);
+  --border-light: 0.5px solid var(--light-grey);
+  --border-mid: 0.5px solid var(--mid-grey);
 }
 
 html, body {
@@ -102,59 +102,56 @@ html, body {
 .zoom-control {
   display: flex;
   align-items: center;
-  gap: 0;
-  border: var(--border);
+  gap: 3px;
 }
 
 .zoom-control button {
-  width: 32px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--white);
-  border: none;
-  border-right: var(--border);
+  background: none;
+  border: var(--border);
   color: var(--black);
   font-family: var(--font-mono);
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 300;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background 0.1s, color 0.1s;
+  line-height: 1;
 }
 
 .zoom-control button:last-child {
-  border-right: none;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
   letter-spacing: 1px;
-  width: 40px;
+  width: 36px;
+  margin-left: 3px;
 }
 
 .zoom-control button:hover {
-  background: var(--off-white);
+  background: var(--black);
+  color: var(--white);
 }
 
 #zoom-level {
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  min-width: 32px;
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: -0.5px;
+  min-width: 44px;
   text-align: center;
   color: var(--black);
-  padding: 0 4px;
+  padding: 0 2px;
+  line-height: 1;
 }
 
 .zoom-unit {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 8px;
   color: var(--dark-grey);
-  margin-right: 4px;
-  border-right: var(--border);
-  padding-right: 8px;
-  height: 28px;
-  display: flex;
-  align-items: center;
+  margin-right: 2px;
 }
 
 /* Topbar buttons */
@@ -2803,12 +2800,12 @@ body.dark {
   --black: #E8E8E8;
   --pure-black: #FFFFFF;
   --accent: #FF5722;
-  --border: 1px solid #333333;
+  --border: 0.5px solid #333333;
 }
 
 body.dark #topbar {
   background: #1A1A1A;
-  border-bottom: 1px solid #333333;
+  border-bottom: 0.5px solid #333333;
 }
 
 body.dark #toolbar {
@@ -2821,7 +2818,7 @@ body.dark .toolbar-divider {
 }
 
 body.dark .toolbar-drag-handle {
-  border-bottom: 1px solid #333333;
+  border-bottom: 0.5px solid #333333;
 }
 
 body.dark .tool-btn.active {
@@ -2833,22 +2830,14 @@ body.dark .tool-btn:hover {
   background: #252525;
 }
 
-body.dark .zoom-control {
-  border-color: #333333;
-}
-
 body.dark .zoom-control button {
-  background: #1A1A1A;
   color: #E8E8E8;
   border-color: #333333;
 }
 
 body.dark .zoom-control button:hover {
-  background: #252525;
-}
-
-body.dark .zoom-unit {
-  border-color: #333333;
+  background: #E8E8E8;
+  color: #1A1A1A;
 }
 
 body.dark .topbar-btn {

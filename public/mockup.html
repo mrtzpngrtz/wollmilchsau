@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSBD — Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;1,300&family=Roboto+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --white: #FFFFFF;
+  --off-white: #F5F5F3;
+  --light: #EBEBEB;
+  --mid: #C8C8C8;
+  --dim: #999;
+  --dark: #444;
+  --near-black: #1A1A1A;
+  --black: #080808;
+  --accent: #FF4500;
+  --hairline: 0.5px solid #1A1A1A;
+  --hairline-light: 0.5px solid #DDDDDD;
+  --f-sans: 'Inter', 'Helvetica Neue', sans-serif;
+  --f-mono: 'Roboto Mono', monospace;
+  --tb: 40px;
+  --sb: 52px;
+}
+
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--off-white); color: var(--black); font-family: var(--f-sans); font-size: 11px; -webkit-font-smoothing: antialiased; }
+
+/* ── TOPBAR ── */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--tb);
+  background: var(--white);
+  border-bottom: var(--hairline);
+  display: flex; align-items: stretch;
+  z-index: 100;
+}
+
+.tb-seg {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 16px;
+  border-right: var(--hairline);
+}
+.tb-seg:last-child { border-right: none; }
+.tb-grow { flex: 1; }
+.tb-center { justify-content: center; }
+.tb-end { justify-content: flex-end; border-right: none; border-left: var(--hairline); }
+
+.brand {
+  font-family: var(--f-mono);
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 2.5px;
+  color: var(--black);
+}
+.brand-dot { color: var(--accent); margin-right: 6px; font-size: 8px; }
+
+.board-name {
+  font-family: var(--f-mono);
+  font-size: 10px; color: var(--dim);
+  letter-spacing: 1px;
+  display: flex; align-items: center; gap: 4px;
+}
+.board-name .arr { font-size: 8px; }
+
+/* zoom hero */
+.zoom-cluster {
+  display: flex; align-items: baseline; gap: 3px;
+}
+.zoom-num {
+  font-family: var(--f-mono);
+  font-size: 28px; font-weight: 300;
+  letter-spacing: -1px;
+  line-height: 1;
+  color: var(--black);
+}
+.zoom-unit {
+  font-family: var(--f-mono);
+  font-size: 10px; color: var(--dim);
+  letter-spacing: 1px;
+}
+.zoom-btn {
+  background: none; border: var(--hairline); color: var(--black);
+  font-family: var(--f-mono); font-size: 14px;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; line-height: 1;
+}
+.zoom-btn:hover { background: var(--black); color: var(--white); }
+
+.coord-readout {
+  font-family: var(--f-mono);
+  font-size: 9px; color: var(--dim);
+  letter-spacing: 0.5px;
+}
+
+.tb-btn {
+  background: none; border: none;
+  font-family: var(--f-mono); font-size: 10px;
+  color: var(--dark); cursor: pointer;
+  padding: 4px 6px;
+  letter-spacing: 1px;
+}
+.tb-btn:hover { color: var(--black); }
+
+/* ── LEFT SIDEBAR (tools) ── */
+#sidebar {
+  position: fixed; top: var(--tb); left: 0; bottom: 0;
+  width: var(--sb);
+  background: var(--white);
+  border-right: var(--hairline);
+  display: flex; flex-direction: column;
+  z-index: 90;
+}
+
+.tool-group {
+  border-bottom: var(--hairline);
+  padding: 8px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+
+.tool {
+  width: 36px; height: 36px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  position: relative;
+}
+.tool:hover { background: var(--light); }
+.tool.active { background: var(--black); }
+.tool.active .tool-icon, .tool.active .tool-key { color: var(--white); }
+.tool-icon { font-size: 14px; line-height: 1; color: var(--dark); }
+.tool-key {
+  font-family: var(--f-mono); font-size: 7px;
+  color: var(--dim); letter-spacing: 0.5px;
+}
+
+.sidebar-spacer { flex: 1; }
+.sidebar-bottom {
+  border-top: var(--hairline);
+  padding: 8px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+
+/* ── CANVAS AREA ── */
+#canvas-area {
+  position: fixed;
+  top: var(--tb); left: var(--sb); right: 0; bottom: 0;
+  background: var(--off-white);
+  overflow: hidden;
+}
+
+/* dot grid */
+#canvas-area::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle, #C0C0C0 0.8px, transparent 0.8px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+/* cross markers */
+.cross {
+  position: absolute;
+  width: 12px; height: 12px;
+  pointer-events: none;
+}
+.cross::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 0.5px; background: var(--mid);
+  transform: translateY(-50%);
+}
+.cross::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 0.5px; background: var(--mid);
+  transform: translateX(-50%);
+}
+
+/* ── MOCK CANVAS ELEMENTS ── */
+
+/* Text note card */
+.mock-card {
+  position: absolute;
+  background: var(--white);
+  border: var(--hairline);
+  padding: 16px;
+}
+
+.mock-note {
+  width: 220px;
+  top: 80px; left: 120px;
+}
+.mock-note .note-label {
+  font-family: var(--f-mono); font-size: 8px;
+  color: var(--dim); letter-spacing: 1px;
+  margin-bottom: 10px;
+  display: flex; justify-content: space-between;
+}
+.mock-note .note-body {
+  font-size: 13px; font-weight: 300;
+  line-height: 1.6; color: var(--near-black);
+}
+
+/* Big number card */
+.mock-stat {
+  position: absolute;
+  background: var(--white);
+  border: var(--hairline);
+  padding: 20px;
+  width: 160px;
+  top: 80px; left: 380px;
+}
+.stat-num {
+  font-family: var(--f-mono);
+  font-size: 56px; font-weight: 300;
+  letter-spacing: -3px; line-height: 1;
+  color: var(--black);
+}
+.stat-label {
+  font-family: var(--f-mono);
+  font-size: 8px; color: var(--dim);
+  letter-spacing: 1.5px; margin-top: 6px;
+}
+
+/* Image placeholder */
+.mock-img {
+  position: absolute;
+  background: var(--light);
+  border: var(--hairline);
+  width: 200px; height: 140px;
+  top: 80px; left: 580px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px;
+}
+.mock-img .img-label {
+  font-family: var(--f-mono); font-size: 8px;
+  color: var(--dim); letter-spacing: 1px;
+}
+.mock-img .img-size {
+  font-family: var(--f-mono); font-size: 20px;
+  font-weight: 300; color: var(--mid);
+}
+
+/* Data table card */
+.mock-table {
+  position: absolute;
+  background: var(--white);
+  border: var(--hairline);
+  width: 260px;
+  top: 300px; left: 120px;
+}
+.table-header {
+  padding: 8px 14px;
+  border-bottom: var(--hairline);
+  font-family: var(--f-mono); font-size: 8px;
+  letter-spacing: 1.5px; color: var(--dim);
+  display: flex; justify-content: space-between;
+}
+.table-row {
+  padding: 7px 14px;
+  border-bottom: var(--hairline-light);
+  display: flex; justify-content: space-between;
+  align-items: center;
+}
+.table-row:last-child { border-bottom: none; }
+.row-label { font-size: 11px; color: var(--dark); }
+.row-val {
+  font-family: var(--f-mono); font-size: 11px;
+  color: var(--near-black); font-weight: 500;
+}
+.row-bar-wrap {
+  width: 60px; height: 2px;
+  background: var(--light);
+  margin-top: 2px;
+}
+.row-bar { height: 100%; background: var(--near-black); }
+
+/* Chart card */
+.mock-chart {
+  position: absolute;
+  background: var(--white);
+  border: var(--hairline);
+  width: 300px; height: 180px;
+  top: 300px; left: 420px;
+  padding: 16px;
+  overflow: hidden;
+}
+.chart-header {
+  display: flex; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.chart-title { font-family: var(--f-mono); font-size: 8px; letter-spacing: 1px; color: var(--dim); }
+.chart-val { font-family: var(--f-mono); font-size: 22px; font-weight: 300; color: var(--black); }
+.chart-sub { font-family: var(--f-mono); font-size: 8px; color: var(--dim); }
+.chart-svg { position: absolute; bottom: 0; left: 0; right: 0; }
+
+/* Arrow connection */
+.mock-arrow {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* ── RIGHT PANEL (properties) ── */
+#panel {
+  position: fixed;
+  top: var(--tb); right: 0; bottom: 0;
+  width: 240px;
+  background: var(--white);
+  border-left: var(--hairline);
+  z-index: 90;
+  overflow: hidden;
+}
+
+.panel-section {
+  border-bottom: var(--hairline);
+  padding: 12px 16px;
+}
+.panel-label {
+  font-family: var(--f-mono); font-size: 8px;
+  letter-spacing: 1.5px; color: var(--dim);
+  margin-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.panel-row {
+  display: flex; align-items: center;
+  gap: 8px; margin-bottom: 8px;
+}
+.panel-row:last-child { margin-bottom: 0; }
+.p-key { font-family: var(--f-mono); font-size: 9px; color: var(--dim); width: 40px; flex-shrink: 0; }
+.p-val-big {
+  font-family: var(--f-mono); font-size: 16px; font-weight: 300;
+  color: var(--black); flex: 1;
+}
+.p-input {
+  background: var(--off-white);
+  border: var(--hairline-light);
+  font-family: var(--f-mono); font-size: 10px;
+  color: var(--black); padding: 4px 8px;
+  flex: 1; outline: none;
+}
+.p-input:focus { border-color: var(--black); }
+
+/* slider */
+.slider-wrap { display: flex; align-items: center; gap: 8px; flex: 1; }
+.slider-track {
+  flex: 1; height: 2px; background: var(--light);
+  position: relative; cursor: pointer;
+}
+.slider-fill { height: 100%; background: var(--black); width: 65%; }
+.slider-thumb {
+  position: absolute; top: 50%; right: 35%;
+  transform: translate(50%, -50%);
+  width: 10px; height: 10px;
+  background: var(--black); border-radius: 50%;
+}
+.slider-num { font-family: var(--f-mono); font-size: 10px; color: var(--dim); width: 24px; text-align: right; }
+
+/* color swatches */
+.swatch-row { display: flex; gap: 4px; }
+.swatch {
+  width: 18px; height: 18px;
+  border: var(--hairline-light); cursor: pointer;
+}
+.swatch.sel { border-color: var(--black); box-shadow: inset 0 0 0 2px var(--white); }
+
+/* element list */
+.el-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0;
+  border-bottom: var(--hairline-light);
+}
+.el-row:last-child { border-bottom: none; }
+.el-icon { font-size: 12px; color: var(--dim); width: 16px; }
+.el-name { font-family: var(--f-mono); font-size: 9px; color: var(--dark); flex: 1; letter-spacing: 0.5px; }
+.el-num { font-family: var(--f-mono); font-size: 9px; color: var(--dim); }
+
+/* selected state indicator */
+.el-row.sel .el-name { color: var(--black); font-weight: 500; }
+.el-row.sel .el-icon { color: var(--black); }
+
+/* minimap */
+.minimap {
+  position: fixed;
+  bottom: 16px; left: calc(var(--sb) + 16px);
+  width: 120px; height: 80px;
+  background: var(--white);
+  border: var(--hairline);
+  overflow: hidden;
+}
+.minimap-viewport {
+  position: absolute;
+  top: 20%; left: 15%;
+  width: 50%; height: 60%;
+  border: 0.5px solid var(--accent);
+  background: rgba(255,69,0,0.04);
+}
+.minimap-dot {
+  position: absolute;
+  width: 4px; height: 4px;
+  background: var(--mid);
+}
+.minimap-label {
+  position: absolute; bottom: 4px; right: 6px;
+  font-family: var(--f-mono); font-size: 7px;
+  color: var(--dim); letter-spacing: 0.5px;
+}
+
+/* status bar */
+#statusbar {
+  position: fixed; bottom: 0; left: var(--sb); right: 0;
+  height: 24px;
+  background: var(--white);
+  border-top: var(--hairline);
+  display: flex; align-items: center;
+  padding: 0 16px; gap: 16px;
+  z-index: 90;
+}
+.status-item {
+  font-family: var(--f-mono); font-size: 8px;
+  color: var(--dim); letter-spacing: 0.8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.status-val { color: var(--dark); }
+.status-accent { color: var(--accent); }
+
+/* filter pills */
+.filter-row { display: flex; gap: 4px; align-items: center; }
+.filter-pill {
+  font-family: var(--f-mono); font-size: 8px;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border: var(--hairline-light);
+  color: var(--dim);
+  cursor: pointer;
+  background: none;
+}
+.filter-pill.on {
+  background: var(--black); color: var(--white); border-color: var(--black);
+}
+
+/* right panel canvas area — shift right when panel visible */
+#canvas-area { right: 240px; }
+</style>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<div id="topbar">
+  <!-- Brand -->
+  <div class="tb-seg">
+    <span class="brand"><span class="brand-dot">●</span>SAMESAMEBUTDIFFERENT</span>
+  </div>
+
+  <!-- Board name -->
+  <div class="tb-seg">
+    <div class="board-name">
+      <span>RESEARCH_01</span>
+      <span class="arr">▾</span>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="tb-seg tb-grow">
+    <div class="filter-row">
+      <button class="filter-pill on">IMG</button>
+      <button class="filter-pill">VID</button>
+      <button class="filter-pill">TXT</button>
+      <button class="filter-pill">CHAT</button>
+      <button class="filter-pill">THREAD</button>
+    </div>
+  </div>
+
+  <!-- Zoom hero -->
+  <div class="tb-seg tb-center">
+    <button class="zoom-btn">−</button>
+    <div class="zoom-cluster">
+      <span class="zoom-num">100</span>
+      <span class="zoom-unit">%</span>
+    </div>
+    <button class="zoom-btn">+</button>
+    <button class="tb-btn" style="font-size:9px;letter-spacing:1px;">FIT</button>
+  </div>
+
+  <!-- Right: coords + actions -->
+  <div class="tb-seg tb-end">
+    <span class="coord-readout">X&nbsp;−240&nbsp;&nbsp;Y&nbsp;188</span>
+    <div style="width:0.5px;background:#ddd;height:20px;margin:0 4px;"></div>
+    <button class="tb-btn">◐</button>
+    <button class="tb-btn">↩</button>
+    <button class="tb-btn">↪</button>
+    <div style="width:0.5px;background:#ddd;height:20px;margin:0 4px;"></div>
+    <button class="tb-btn">EXPORT</button>
+    <button class="tb-btn">SHARE</button>
+  </div>
+</div>
+
+<!-- ── LEFT SIDEBAR ── -->
+<div id="sidebar">
+  <div class="tool-group">
+    <div class="tool active">
+      <span class="tool-icon">↖</span>
+      <span class="tool-key">V</span>
+    </div>
+    <div class="tool">
+      <span class="tool-icon">✋</span>
+      <span class="tool-key">H</span>
+    </div>
+  </div>
+  <div class="tool-group">
+    <div class="tool">
+      <span class="tool-icon">T</span>
+      <span class="tool-key">T</span>
+    </div>
+    <div class="tool">
+      <span class="tool-icon">N</span>
+      <span class="tool-key">N</span>
+    </div>
+    <div class="tool">
+      <span class="tool-icon">□</span>
+      <span class="tool-key">R</span>
+    </div>
+    <div class="tool">
+      <span class="tool-icon">○</span>
+      <span class="tool-key">C</span>
+    </div>
+  </div>
+  <div class="tool-group">
+    <div class="tool">
+      <span class="tool-icon">↗</span>
+      <span class="tool-key">A</span>
+    </div>
+    <div class="tool">
+      <span class="tool-icon">✏</span>
+      <span class="tool-key">P</span>
+    </div>
+  </div>
+  <div class="tool-group">
+    <div class="tool">
+      <span class="tool-icon">☑</span>
+      <span class="tool-key">D</span>
+    </div>
+    <div class="tool">
+      <span class="tool-icon">📎</span>
+      <span class="tool-key">F</span>
+    </div>
+    <div class="tool">
+      <span class="tool-icon">☺</span>
+      <span class="tool-key">G</span>
+    </div>
+  </div>
+  <div class="tool-group">
+    <div class="tool">
+      <span class="tool-icon">◎</span>
+      <span class="tool-key">K</span>
+    </div>
+    <div class="tool">
+      <span class="tool-icon">⬡</span>
+      <span class="tool-key">L</span>
+    </div>
+  </div>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-bottom">
+    <div class="tool">
+      <span class="tool-icon" style="font-size:10px;">⚙</span>
+    </div>
+    <div class="tool">
+      <span class="tool-icon" style="font-size:10px;">👤</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── CANVAS ── -->
+<div id="canvas-area">
+
+  <!-- cross markers -->
+  <div class="cross" style="top:60px;left:90px;"></div>
+  <div class="cross" style="top:60px;left:350px;"></div>
+  <div class="cross" style="top:60px;left:570px;"></div>
+  <div class="cross" style="top:270px;left:90px;"></div>
+  <div class="cross" style="top:270px;left:350px;"></div>
+  <div class="cross" style="top:270px;left:700px;"></div>
+
+  <!-- Note card -->
+  <div class="mock-card mock-note" style="outline: 1.5px solid var(--black);">
+    <div class="note-label">
+      <span>NOTE · 001</span>
+      <span style="color:var(--accent);">●</span>
+    </div>
+    <div class="note-body">The grid is visible or felt. Content snaps to invisible lines. Emptiness is as designed as the filled areas.</div>
+  </div>
+
+  <!-- Stat card -->
+  <div class="mock-card mock-stat">
+    <div class="stat-num">74</div>
+    <div class="stat-label">ELEMENTS ON BOARD</div>
+    <div style="margin-top:12px;height:0.5px;background:var(--light);"></div>
+    <div style="margin-top:8px;display:flex;gap:16px;">
+      <div>
+        <div style="font-family:var(--f-mono);font-size:14px;font-weight:300;">17</div>
+        <div style="font-family:var(--f-mono);font-size:7px;color:var(--dim);letter-spacing:1px;margin-top:2px;">IMG</div>
+      </div>
+      <div>
+        <div style="font-family:var(--f-mono);font-size:14px;font-weight:300;">38</div>
+        <div style="font-family:var(--f-mono);font-size:7px;color:var(--dim);letter-spacing:1px;margin-top:2px;">TXT</div>
+      </div>
+      <div>
+        <div style="font-family:var(--f-mono);font-size:14px;font-weight:300;">19</div>
+        <div style="font-family:var(--f-mono);font-size:7px;color:var(--dim);letter-spacing:1px;margin-top:2px;">OTHER</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image placeholder -->
+  <div class="mock-img">
+    <div class="img-size">2400×1600</div>
+    <div class="img-label">IMAGE · 003</div>
+  </div>
+
+  <!-- Arrow SVG between note and stat -->
+  <svg class="mock-arrow" style="position:absolute;top:120px;left:340px;width:40px;height:20px;" viewBox="0 0 40 20">
+    <line x1="0" y1="10" x2="32" y2="10" stroke="#999" stroke-width="0.5"/>
+    <polygon points="32,6 40,10 32,14" fill="#999"/>
+  </svg>
+
+  <!-- Data table -->
+  <div class="mock-table">
+    <div class="table-header"><span>ELEMENTS BY TYPE</span><span>74 TOTAL</span></div>
+    <div class="table-row">
+      <div>
+        <div class="row-label">Image</div>
+        <div class="row-bar-wrap"><div class="row-bar" style="width:80%;"></div></div>
+      </div>
+      <div class="row-val">17</div>
+    </div>
+    <div class="table-row">
+      <div>
+        <div class="row-label">Text</div>
+        <div class="row-bar-wrap"><div class="row-bar" style="width:55%;"></div></div>
+      </div>
+      <div class="row-val">12</div>
+    </div>
+    <div class="table-row">
+      <div>
+        <div class="row-label">Note</div>
+        <div class="row-bar-wrap"><div class="row-bar" style="width:38%;"></div></div>
+      </div>
+      <div class="row-val">8</div>
+    </div>
+    <div class="table-row">
+      <div>
+        <div class="row-label">Shape</div>
+        <div class="row-bar-wrap"><div class="row-bar" style="width:28%;"></div></div>
+      </div>
+      <div class="row-val">6</div>
+    </div>
+    <div class="table-row">
+      <div>
+        <div class="row-label">Arrow</div>
+        <div class="row-bar-wrap"><div class="row-bar" style="width:18%;"></div></div>
+      </div>
+      <div class="row-val">4</div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="mock-chart">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">CANVAS ACTIVITY</div>
+        <div class="chart-val">2,847</div>
+        <div class="chart-sub">EDITS THIS WEEK</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="chart-title">DELTA</div>
+        <div style="font-family:var(--f-mono);font-size:14px;font-weight:300;color:var(--dark);">+12%</div>
+      </div>
+    </div>
+    <svg class="chart-svg" width="300" height="90" viewBox="0 0 300 90" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1A1A1A" stop-opacity="0.08"/>
+          <stop offset="100%" stop-color="#1A1A1A" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="M0,70 L40,55 L80,60 L120,40 L160,45 L200,25 L240,30 L280,10 L300,15 L300,90 L0,90 Z" fill="url(#fade)"/>
+      <path d="M0,70 L40,55 L80,60 L120,40 L160,45 L200,25 L240,30 L280,10 L300,15" fill="none" stroke="#1A1A1A" stroke-width="0.8"/>
+      <!-- hairline grid -->
+      <line x1="0" y1="30" x2="300" y2="30" stroke="#E0E0E0" stroke-width="0.5"/>
+      <line x1="0" y1="60" x2="300" y2="60" stroke="#E0E0E0" stroke-width="0.5"/>
+    </svg>
+  </div>
+
+  <!-- Minimap -->
+  <div class="minimap">
+    <div class="minimap-dot" style="top:25%;left:20%;"></div>
+    <div class="minimap-dot" style="top:35%;left:45%;background:var(--near-black);"></div>
+    <div class="minimap-dot" style="top:60%;left:30%;"></div>
+    <div class="minimap-dot" style="top:45%;left:65%;"></div>
+    <div class="minimap-viewport"></div>
+    <div class="minimap-label">MAP</div>
+  </div>
+
+</div>
+
+<!-- ── RIGHT PANEL ── -->
+<div id="panel">
+
+  <!-- Element info -->
+  <div class="panel-section">
+    <div class="panel-label">
+      <span>SELECTION</span>
+      <span style="color:var(--accent);font-size:7px;">● ACTIVE</span>
+    </div>
+    <div class="panel-row">
+      <span class="p-key">TYPE</span>
+      <span style="font-family:var(--f-mono);font-size:10px;color:var(--dark);">NOTE</span>
+    </div>
+    <div class="panel-row">
+      <span class="p-key">ID</span>
+      <span style="font-family:var(--f-mono);font-size:10px;color:var(--dim);">el_0042</span>
+    </div>
+  </div>
+
+  <!-- Position -->
+  <div class="panel-section">
+    <div class="panel-label"><span>POSITION</span></div>
+    <div class="panel-row">
+      <span class="p-key">X</span>
+      <span class="p-val-big">120</span>
+      <span class="p-key">Y</span>
+      <span class="p-val-big">80</span>
+    </div>
+    <div class="panel-row">
+      <span class="p-key">W</span>
+      <span class="p-val-big">220</span>
+      <span class="p-key">H</span>
+      <span class="p-val-big">134</span>
+    </div>
+  </div>
+
+  <!-- Opacity slider -->
+  <div class="panel-section">
+    <div class="panel-label"><span>OPACITY</span></div>
+    <div class="panel-row">
+      <div class="slider-wrap">
+        <div class="slider-track">
+          <div class="slider-fill"></div>
+          <div class="slider-thumb"></div>
+        </div>
+        <span class="slider-num">65</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color -->
+  <div class="panel-section">
+    <div class="panel-label"><span>FILL</span></div>
+    <div class="swatch-row">
+      <div class="swatch sel" style="background:#FFFFFF;"></div>
+      <div class="swatch" style="background:#F5F5F3;"></div>
+      <div class="swatch" style="background:#1A1A1A;"></div>
+      <div class="swatch" style="background:#FF4500;"></div>
+      <div class="swatch" style="background:#4A90D9;"></div>
+      <div class="swatch" style="background:#E0E0E0;border-color:transparent;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--dim);">+</div>
+    </div>
+  </div>
+
+  <!-- Typography -->
+  <div class="panel-section">
+    <div class="panel-label"><span>TYPOGRAPHY</span></div>
+    <div class="panel-row">
+      <span class="p-key">SIZE</span>
+      <input class="p-input" value="13" style="width:48px;flex:none;">
+      <span class="p-key" style="margin-left:8px;">WT</span>
+      <input class="p-input" value="300" style="width:48px;flex:none;">
+    </div>
+  </div>
+
+  <!-- Layer list -->
+  <div class="panel-section">
+    <div class="panel-label"><span>LAYERS</span><span style="color:var(--dim);">74</span></div>
+    <div class="el-row sel">
+      <span class="el-icon">N</span>
+      <span class="el-name">NOTE · 001</span>
+      <span class="el-num">01</span>
+    </div>
+    <div class="el-row">
+      <span class="el-icon">◈</span>
+      <span class="el-name">STAT · 001</span>
+      <span class="el-num">02</span>
+    </div>
+    <div class="el-row">
+      <span class="el-icon">□</span>
+      <span class="el-name">IMAGE · 003</span>
+      <span class="el-num">03</span>
+    </div>
+    <div class="el-row">
+      <span class="el-icon">≡</span>
+      <span class="el-name">TABLE · 001</span>
+      <span class="el-num">04</span>
+    </div>
+    <div class="el-row">
+      <span class="el-icon">∿</span>
+      <span class="el-name">CHART · 001</span>
+      <span class="el-num">05</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── STATUS BAR ── -->
+<div id="statusbar">
+  <div class="status-item"><span>BOARD</span><span class="status-val">RESEARCH_01</span></div>
+  <div class="status-item"><span>EL</span><span class="status-val">74</span></div>
+  <div class="status-item"><span>SEL</span><span class="status-val">1</span></div>
+  <div class="status-item"><span>ZOOM</span><span class="status-val">100%</span></div>
+  <div style="flex:1;"></div>
+  <div class="status-item"><span class="status-accent">● SYNCED</span></div>
+  <div class="status-item"><span>3 ONLINE</span></div>
+</div>
+
+</body>
+</html>

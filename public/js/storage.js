@@ -4,6 +4,24 @@ const Storage = {
   currentBoard: 'default',
   currentBoardOwner: null,  // null = own board, string = shared board owner
   dropdownOpen: false,
+  boardSort: localStorage.getItem('ssbd_board_sort') || 'date',
+
+  getPinnedBoards() {
+    try { return JSON.parse(localStorage.getItem('ssbd_pinned_boards') || '[]'); }
+    catch { return []; }
+  },
+
+  setPinnedBoards(arr) {
+    localStorage.setItem('ssbd_pinned_boards', JSON.stringify(arr));
+  },
+
+  togglePin(name) {
+    const pins = this.getPinnedBoards();
+    const idx = pins.indexOf(name);
+    if (idx >= 0) pins.splice(idx, 1); else pins.unshift(name);
+    this.setPinnedBoards(pins);
+    this.refreshDropdownList();
+  },
 
   init() {
     this.autoSaveInterval = setInterval(() => this.autoSave(), 30000);
@@ -41,6 +59,15 @@ const Storage = {
     });
 
     newBtn.addEventListener('click', (e) => { e.stopPropagation(); this.createNewBoard(); });
+
+    document.querySelectorAll('.board-sort-btn').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.boardSort = b.dataset.sort;
+        localStorage.setItem('ssbd_board_sort', this.boardSort);
+        this.refreshDropdownList();
+      });
+    });
   },
 
   openDropdown() {
@@ -77,6 +104,12 @@ const Storage = {
 
   async refreshDropdownList() {
     const list = document.getElementById('board-dropdown-list');
+
+    // Update sort button active states
+    document.querySelectorAll('.board-sort-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.sort === this.boardSort);
+    });
+
     try {
       const res = await fetch('/api/boards');
       const boards = await res.json();
@@ -87,11 +120,27 @@ const Storage = {
         return;
       }
 
-      boards.forEach(board => {
+      const pinned = this.getPinnedBoards();
+
+      // Sort by selected mode
+      const sorted = [...boards];
+      if (this.boardSort === 'name') {
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (this.boardSort === 'size') {
+        sorted.sort((a, b) => (b.elementCount || 0) - (a.elementCount || 0));
+      } else {
+        sorted.sort((a, b) => new Date(b.lastEdit || 0) - new Date(a.lastEdit || 0));
+      }
+      // Pinned always float to top
+      sorted.sort((a, b) => (pinned.includes(a.name) ? 0 : 1) - (pinned.includes(b.name) ? 0 : 1));
+
+      sorted.forEach(board => {
         const isShared = board.shared;
         const isCurrent = board.name === this.currentBoard && (isShared ? this.currentBoardOwner === board.owner : !this.currentBoardOwner);
+        const isPinned = pinned.includes(board.name);
+
         const item = document.createElement('div');
-        item.className = 'board-dropdown-item' + (isCurrent ? ' active' : '');
+        item.className = 'board-dropdown-item' + (isCurrent ? ' active' : '') + (isPinned ? ' pinned' : '');
 
         const left = document.createElement('div');
         left.className = 'board-item-left';
@@ -110,35 +159,36 @@ const Storage = {
         const actions = document.createElement('div');
         actions.className = 'board-actions';
 
+        // Pin button (always visible when pinned)
         if (!isShared) {
+          const pinBtn = document.createElement('button');
+          pinBtn.className = 'board-action-btn board-action-pin' + (isPinned ? ' is-pinned' : '');
+          pinBtn.textContent = '★';
+          pinBtn.title = isPinned ? 'Unpin' : 'Pin to top';
+          pinBtn.addEventListener('click', (e) => { e.stopPropagation(); this.togglePin(board.name); });
+          actions.appendChild(pinBtn);
+
           const renameBtn = document.createElement('button');
           renameBtn.className = 'board-action-btn';
           renameBtn.textContent = '✎';
           renameBtn.title = 'Rename';
+          renameBtn.addEventListener('click', (e) => { e.stopPropagation(); this.renameBoard(board.name); });
+          actions.appendChild(renameBtn);
 
           const deleteBtn = document.createElement('button');
           deleteBtn.className = 'board-action-btn board-action-delete';
           deleteBtn.textContent = '✕';
           deleteBtn.title = 'Delete';
-
-          actions.appendChild(renameBtn);
-          actions.appendChild(deleteBtn);
-
-          renameBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.renameBoard(board.name);
-          });
-
           deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             if (await Dialog.confirm(`Delete board "${board.name}"?`)) this.deleteBoard(board.name);
           });
+          actions.appendChild(deleteBtn);
         }
 
         item.appendChild(left);
         item.appendChild(actions);
 
-        // Click to switch
         left.addEventListener('click', (e) => {
           e.stopPropagation();
           Collab.leaveBoard();

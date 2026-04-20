@@ -388,14 +388,46 @@ body.dark #filter-bar .filter-btn.active {
 .board-dropdown-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 7px 10px;
   border-bottom: var(--border);
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 500;
   letter-spacing: 2px;
   color: var(--dark-grey);
+}
+
+.board-sort-controls {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  justify-content: flex-start;
+  margin-left: 4px;
+}
+
+.board-sort-btn {
+  background: none;
+  border: var(--border-light);
+  color: var(--dark-grey);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.board-sort-btn:hover {
+  border-color: var(--black);
+  color: var(--black);
+}
+
+.board-sort-btn.active {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
 }
 
 .board-dropdown-header button {
@@ -515,6 +547,12 @@ body.dark #filter-bar .filter-btn.active {
   color: var(--black);
 }
 
+/* Pin button — always visible when pinned */
+.board-action-pin { color: var(--mid-grey); font-size: 11px; }
+.board-action-pin:hover { color: var(--black) !important; }
+.board-action-pin.is-pinned { color: var(--accent) !important; opacity: 1; }
+.board-dropdown-item.pinned .board-action-pin { opacity: 1 !important; }
+
 .board-action-delete:hover {
   color: var(--accent) !important;
 }
@@ -541,6 +579,25 @@ body.dark .board-dropdown-header {
 body.dark .board-dropdown-header button {
   border-color: #333333;
 }
+
+body.dark .board-sort-btn {
+  border-color: #333;
+  color: #666;
+}
+
+body.dark .board-sort-btn:hover {
+  border-color: #E8E8E8;
+  color: #E8E8E8;
+}
+
+body.dark .board-sort-btn.active {
+  background: #E8E8E8;
+  color: #1A1A1A;
+  border-color: #E8E8E8;
+}
+
+body.dark .board-action-pin { color: #444; }
+body.dark .board-action-pin.is-pinned { color: var(--accent) !important; }
 
 body.dark .board-dropdown-item {
   border-bottom-color: #2A2A2A;

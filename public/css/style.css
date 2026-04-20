@@ -616,17 +616,28 @@ body.dark .board-dropdown-item .board-name {
 }
 
 .tool-btn {
-  width: 40px;
-  height: 36px;
+  width: 52px;
+  height: 40px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   background: none;
   border: none;
   color: var(--black);
   cursor: pointer;
   transition: background 0.08s;
   position: relative;
+}
+
+.tool-btn::after {
+  content: attr(data-key);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: var(--dark-grey);
+  letter-spacing: 0.5px;
+  line-height: 1;
 }
 
 .tool-btn:hover {
@@ -638,7 +649,7 @@ body.dark .board-dropdown-item .board-name {
   color: var(--white);
 }
 
-.tool-btn.active::after {
+.tool-btn.active::before {
   content: '';
   position: absolute;
   left: 0;
@@ -647,6 +658,10 @@ body.dark .board-dropdown-item .board-name {
   width: 2px;
   height: 16px;
   background: var(--accent);
+}
+
+.tool-btn.active::after {
+  color: rgba(255,255,255,0.45);
 }
 
 .tool-letter {
@@ -2828,9 +2843,17 @@ body.dark .toolbar-drag-handle {
   border-bottom: 0.5px solid #333333;
 }
 
+body.dark .tool-btn::after {
+  color: #444;
+}
+
 body.dark .tool-btn.active {
   background: #E8E8E8;
   color: #1A1A1A;
+}
+
+body.dark .tool-btn.active::after {
+  color: rgba(0,0,0,0.35);
 }
 
 body.dark .tool-btn:hover {

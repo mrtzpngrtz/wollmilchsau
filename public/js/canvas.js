@@ -205,6 +205,22 @@ const Canvas = {
     });
     svg.appendChild(rect);
 
+    // Cross (+) registration markers every 8 grid cells
+    const crossStep = baseSpacing * 8;
+    const crossSvgStep = crossStep * this.zoom;
+    const crossOffX = this.panX % crossSvgStep;
+    const crossOffY = this.panY % crossSvgStep;
+    const crossColor = isDark ? '#303030' : '#C0C0C0';
+    const arm = 7;
+    for (let x = crossOffX - crossSvgStep; x < w + crossSvgStep; x += crossSvgStep) {
+      for (let y = crossOffY - crossSvgStep; y < h + crossSvgStep; y += crossSvgStep) {
+        const hLine = Utils.createSVGElement('line', { x1: x - arm, y1: y, x2: x + arm, y2: y, stroke: crossColor, 'stroke-width': '0.5' });
+        const vLine = Utils.createSVGElement('line', { x1: x, y1: y - arm, x2: x, y2: y + arm, stroke: crossColor, 'stroke-width': '0.5' });
+        svg.appendChild(hLine);
+        svg.appendChild(vLine);
+      }
+    }
+
   },
 
   fitAll() {
